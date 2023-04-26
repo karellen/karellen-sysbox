@@ -1,0 +1,4 @@
+[submodule "sysbox"]
+	path = sysbox
+	url = https://github.com/nestybox/sysbox
+	branch = master

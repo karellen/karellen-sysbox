@@ -1,0 +1,7 @@
+# To use Sysbox you MUST disable (remove) `--selinux-enabled` if it's enabled
+
+OPTIONS="$OPTIONS \
+  --bip 172.20.0.1/16 \
+  --default-address-pool base=172.25.0.0/16,size=24 \
+  --add-runtime sysbox-runc=/usr/bin/sysbox-runc
+"

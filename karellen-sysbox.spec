@@ -117,30 +117,3 @@ make DESTDIR=%{buildroot}%{_bindir} install
 %systemd_postun_with_restart sysbox-fs.service sysbox-mgr.service sysbox.service
 
 %changelog
-* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
-- new package built with tito
-
-* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
-- new package built with tito
-
-* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
-- new package built with tito
-
-* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
-- new package built with tito
-
-* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
-- new package built with tito
-
-* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
-- new package built with tito
-
-* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
-- new package built with tito
-
-* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
-- new package built with tito
-
-* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
-- new package built with tito
-

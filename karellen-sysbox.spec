@@ -2,7 +2,7 @@
 %global _missing_build_ids_terminate_build 0
 
 Name: karellen-sysbox
-Version: 0.0.0.0
+Version: 0.6.1.17
 Release: 1%{?dist}
 License: ASL 2.0
 Summary: Sysbox
@@ -117,6 +117,9 @@ make DESTDIR=%{buildroot}%{_bindir} install
 %systemd_postun_with_restart sysbox-fs.service sysbox-mgr.service sysbox.service
 
 %changelog
+* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
+- new package built with tito
+
 * Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-1
 - new package built with tito
 

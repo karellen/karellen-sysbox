@@ -127,8 +127,8 @@ class SubmoduleAwareBuilder(Builder):
         for submodule in submodules_list:
             with chdir(submodule_tree):
                 submodule_git_dir = os.path.join(submodule, ".git")
-                if not os.path.exists(submodule_git_dir) or not os.path.isdir(submodule_git_dir):
-                    raise TitoException("%r path does not contain '.git' directory. "
+                if not os.path.exists(submodule_git_dir):
+                    raise TitoException("%r path does not contain '.git'. "
                                         "Have you cloned the repository recursively?\n"
                                         "Try `git submodule update --init --recursive`!" %
                                         os.path.abspath(submodule))

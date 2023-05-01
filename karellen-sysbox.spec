@@ -3,7 +3,7 @@
 
 Name: karellen-sysbox
 Version: 0.6.1.17
-Release: 2
+Release: 3
 License: ASL 2.0
 Summary: Sysbox
 Url: https://github.com/karellen/%{name}
@@ -117,6 +117,9 @@ make DESTDIR=%{buildroot}%{_bindir} install
 %systemd_postun_with_restart sysbox-fs.service sysbox-mgr.service sysbox.service
 
 %changelog
+* Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-3
+- Add `selinux-enabled` to the daemon.json template
+
 * Sun Apr 30 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-2
 - Remove Debian-only kernel sysctl (arcadiy@ivanov.biz)
 

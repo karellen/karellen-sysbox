@@ -27,6 +27,7 @@ from tito.common import (
     find_spec_like_file,
     get_commit_timestamp,
 )
+from tito.exception import TitoException
 from tito.tar import TarFixer
 
 
@@ -108,7 +109,7 @@ class SubmoduleAwareBuilder(Builder):
                 "%s > /dev/null" % git_archive_cmd,
             )
 
-    # pylint: disable=too-many-locals, too-many-arguments
+    # pylint: disable=too-many-locals, too-many-arguments, consider-using-f-string
     def _submodule_archives(self, relative_git_dir, prefix, commit, initial_tar,
                             submodule_tree="."):
         with chdir(submodule_tree):
@@ -125,6 +126,12 @@ class SubmoduleAwareBuilder(Builder):
         # from the commit id in commit
         for submodule in submodules_list:
             with chdir(submodule_tree):
+                submodule_git_dir = os.path.join(submodule, ".git")
+                if not os.path.exists(submodule_git_dir) or not os.path.isdir(submodule_git_dir):
+                    raise TitoException("%r path does not contain '.git' directory. "
+                                        "Have you cloned the repository recursively?\n"
+                                        "Try `git submodule update --init --recursive`!" %
+                                        os.path.abspath(submodule))
                 # to find the submodule shars:
                 # git rev-parse <commit>:./<submodule>
                 rev_parse_cmd = "git rev-parse %s:./%s" % (commit, submodule)

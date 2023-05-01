@@ -10,5 +10,6 @@
     {
       "sysbox-runc": {"path": "/usr/bin/sysbox-runc"}
     }
-  }
+  },
+  "selinux-enabled": false
 }

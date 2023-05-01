@@ -3,7 +3,7 @@
 
 Name: karellen-sysbox
 Version: 0.6.1.17
-Release: 4
+Release: 5
 License: ASL 2.0
 Summary: Sysbox
 Url: https://github.com/karellen/%{name}
@@ -117,6 +117,15 @@ make DESTDIR=%{buildroot}%{_bindir} install
 %systemd_postun_with_restart sysbox-fs.service sysbox-mgr.service sysbox.service
 
 %changelog
+* Mon May 01 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-5
+- Fix Tito submodule population detection (arcadiy@ivanov.biz)
+
+* Mon May 01 2023 Arcadiy Ivanov <arcadiy@ivanov.biz>
+- Fix Tito submodule population detection (arcadiy@ivanov.biz)
+
+* Mon May 01 2023 Arcadiy Ivanov <arcadiy@ivanov.biz>
+- Fix Tito submodule population detection (arcadiy@ivanov.biz)
+
 * Mon May 01 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-4
 - Harden Tito submodules processor 
 - Ensure selinux is disabled from Docker daemon.json (arcadiy@ivanov.biz)

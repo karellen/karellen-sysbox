@@ -2,8 +2,8 @@
 %global _missing_build_ids_terminate_build 0
 
 Name: karellen-sysbox
-Version: 0.6.1.17
-Release: 5
+Version: 0.6.1.21
+Release: 1
 License: ASL 2.0
 Summary: Sysbox
 Url: https://github.com/karellen/%{name}
@@ -117,6 +117,9 @@ make DESTDIR=%{buildroot}%{_bindir} install
 %systemd_postun_with_restart sysbox-fs.service sysbox-mgr.service sysbox.service
 
 %changelog
+* Mon May 01 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.21-1
+- Update to latest sysbox (arcadiy@ivanov.biz)
+
 * Mon May 01 2023 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.1.17-5
 - Fix Tito submodule population detection (arcadiy@ivanov.biz)
 

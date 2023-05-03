@@ -5,7 +5,7 @@ Name: karellen-sysbox
 Version: 0.6.1.21
 Release: 1
 License: ASL 2.0
-Summary: Sysbox
+Summary: Karellen Sysbox is an UNOFFICIAL Fedora/RHEL/CentOS spin of the Nestybox Sysbox.
 Url: https://github.com/karellen/%{name}
 
 BuildRequires: git
@@ -30,8 +30,9 @@ Provides: sysbox
 Source0: %{name}-%{version}.tar.gz
 
 %description
-Karellen-sysbox is an UNOFFICIAL Fedora/RHEL/CentOS spin of the Nestybox Sysbox.
-Depending on whether you're using it with moby-engine or docker-ce either
+Karellen Sysbox is an UNOFFICIAL Fedora/RHEL/CentOS spin of the Nestybox Sysbox.
+The project is NOT affiliated with or supported by Docker or Nestybox.
+Depending on whether you're using Karellen Sysbox with moby-engine or docker-ce either
 /etc/sysconfig/docker or /etc/docker/daemon.json have to be modified respectively,
 using configuration available in /etc/sysconfig/docker-karellen-sysbox or
 /etc/docker/daemon-karellen-sysbox.json respectively.

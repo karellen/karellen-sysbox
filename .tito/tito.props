@@ -1,6 +1,6 @@
 [buildconfig]
 lib_dir = .tito/libs
-builder = karellen.tito.SubmoduleAwareBuilder
+builder = tito.builder.SubmoduleAwareBuilder
 tagger = karellen.tito.SysboxVersionTagger
 changelog_do_not_remove_cherrypick = 0
 changelog_format = %s (%ae)

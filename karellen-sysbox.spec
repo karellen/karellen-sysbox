@@ -24,6 +24,7 @@ BuildRequires: systemd-rpm-macros
 
 Requires: docker
 Requires: systemd
+Requires: fuse
 
 Provides: sysbox
 

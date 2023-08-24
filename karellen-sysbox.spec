@@ -7,6 +7,9 @@ Release: 1
 License: ASL 2.0
 Summary: Karellen Sysbox is an UNOFFICIAL Fedora/RHEL/CentOS spin of the Nestybox Sysbox.
 Url: https://github.com/karellen/%{name}
+Vendor: Karellen, Inc.
+Packager: Karellen, Inc. <supervisor@karellen.co>
+Group: Tools/Docker
 
 BuildRequires: git
 BuildRequires: make
@@ -22,7 +25,7 @@ BuildRequires: unzip
 BuildRequires: glibc-static
 BuildRequires: systemd-rpm-macros
 
-Requires: docker
+Requires: (docker or docker-ce)
 Requires: systemd
 Requires: fuse
 

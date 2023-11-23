@@ -25,7 +25,6 @@ BuildRequires: unzip
 BuildRequires: glibc-static
 BuildRequires: systemd-rpm-macros
 BuildRequires: libseccomp-devel
-BuildRequires: libseccomp-static
 
 Requires: (docker or docker-ce)
 Requires: systemd
@@ -76,7 +75,7 @@ export PATH="$PATH:$HOME/.local/bin:$HOME/.local/go/bin"
 export PATH="$PATH:$(go env GOPATH)/bin"
 
 cd sysbox
-make sysbox-static-local
+make sysbox-local
 
 %install
 export PATH="$PATH:$HOME/.local/bin:$HOME/.local/go/bin"

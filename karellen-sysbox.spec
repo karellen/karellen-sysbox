@@ -25,11 +25,11 @@ BuildRequires: unzip
 BuildRequires: glibc-static
 BuildRequires: systemd-rpm-macros
 BuildRequires: libseccomp-devel
+BuildRequires: libseccomp-static
 
 Requires: (docker or docker-ce)
 Requires: systemd
 Requires: fuse
-Requires: libseccomp
 
 Provides: sysbox
 

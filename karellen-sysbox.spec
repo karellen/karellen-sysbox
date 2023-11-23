@@ -24,6 +24,7 @@ BuildRequires: gzip
 BuildRequires: unzip
 BuildRequires: glibc-static
 BuildRequires: systemd-rpm-macros
+BuildRequires: libseccomp-devel
 
 Requires: (docker or docker-ce)
 Requires: systemd

@@ -29,6 +29,7 @@ BuildRequires: libseccomp-devel
 Requires: (docker or docker-ce)
 Requires: systemd
 Requires: fuse
+Requires: libseccomp
 
 Provides: sysbox
 

@@ -1,0 +1,62 @@
+name: karellen-sysbox-update
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+jobs:
+  check-update:
+    runs-on: self-hosted
+    timeout-minutes: 600
+    continue-on-error: false
+    env:
+      GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+      SEGMENT_DOWNLOAD_TIMEOUT_MINS: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check Updates
+        shell: bash
+        run: |
+          set -eEux
+          set -o pipefail
+          shopt -s extglob
+
+          MODULES_CHANGED=""
+
+          while read line; do
+              read -r SUBMODULE_SHA SUBMODULE_NAME SUBMODULE_DESCRIBE <<<"$line"
+
+              # The submodules here are not initialized so there'll be a '-' in front of the local SHA
+              SUBMODULE_SHA=${SUBMODULE_SHA:1}
+              GIT_CONFIG="$(git config -f .gitmodules -l | grep 'submodule.'$SUBMODULE_NAME.)"
+              SUBMODULE_URL="$(echo "$GIT_CONFIG" | grep 'submodule.'$SUBMODULE_NAME'.url=' | sed 's/submodule\.'$SUBMODULE_NAME'\.url=//')"
+              SUBMODULE_BRANCH="$(echo "$GIT_CONFIG" | grep 'submodule.'$SUBMODULE_NAME'.branch=' | sed 's/submodule\.'$SUBMODULE_NAME'\.branch=//')"
+              read -r REMOTE_SHA REMOTE_REF <<<"$(git ls-remote $SUBMODULE_URL | grep 'refs/heads/'$SUBMODULE_BRANCH)"
+
+              if [ "$SUBMODULE_SHA" != "$REMOTE_SHA" ]; then
+                  echo "## Submodule $SUBMODULE_NAME @ $SUBMODULE_URL/tree/$SUBMODULE_BRANCH local $SUBMODULE_SHA vs remote $REMOTE_SHA" >> $GITHUB_STEP_SUMMARY
+                  MODULES_CHANGED="1"
+              else
+                  echo "## Submodule $SUBMODULE_NAME @ $SUBMODULE_URL/tree/$SUBMODULE_BRANCH local $SUBMODULE_SHA unchanged" >> $GITHUB_STEP_SUMMARY
+              fi
+          done <<< "$(git submodule status)"
+
+          if [ -z "$MODULES_CHANGED" ]; then
+              echo "# No submodules changed detected - exiting!" >> $GITHUB_STEP_SUMMARY
+              exit 0
+          fi
+
+          git submodule sync --recursive
+          git submodule update --init --remote --recursive
+
+          git config --global user.email "supervisor@karellen.co"
+          git config --global user.name "Karellen Supervisor"
+
+          git commit -a -m "Update $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+          pip3 install tito
+
+          tito tag --accept-auto-changelog
+
+          git push --follow-tags

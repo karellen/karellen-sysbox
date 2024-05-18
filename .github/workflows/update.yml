@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 jobs:
   check-update:
-    runs-on: self-hosted
+    runs-on: linux
     timeout-minutes: 600
     continue-on-error: false
     env:

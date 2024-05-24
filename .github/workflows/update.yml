@@ -57,7 +57,7 @@ jobs:
 
           export DEBIAN_FRONTEND=noninteractive
 
-          sudo apt-get update && sudo apt-get install rpm -y
+          sudo apt-get update && sudo apt-get install rpm python3-rpm -y
 
           pip3 install tito
 

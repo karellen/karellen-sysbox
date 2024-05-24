@@ -57,6 +57,9 @@ jobs:
 
           pip3 install tito
 
+          PATH=~/.local/bin:$PATH
+          export PATH
+
           tito tag --accept-auto-changelog
 
           git push --follow-tags

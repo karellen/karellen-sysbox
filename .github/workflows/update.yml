@@ -55,6 +55,10 @@ jobs:
 
           git commit -a -m "Update $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
+          export DEBIAN_FRONTEND=noninteractive
+
+          sudo apt-get update && sudo apt-get install rpm -y
+
           pip3 install tito
 
           PATH=~/.local/bin:$PATH

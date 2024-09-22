@@ -59,7 +59,7 @@ jobs:
           PATH=~/.local/bin:$PATH
           export PATH
 
-          sudo apt-get update && sudo apt-get install rpm python3-rpm -y
+          sudo apt-get update && sudo apt-get install rpm python3-rpm -y && sudo apt-get upgrade python3-pip
 
           pip3 install --user --break-system-packages --no-input tito
 

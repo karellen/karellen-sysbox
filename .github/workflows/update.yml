@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 jobs:
   check-update:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 600
     continue-on-error: false
     env:
@@ -59,7 +59,7 @@ jobs:
           PATH=~/.local/bin:$PATH
           export PATH
 
-          sudo apt-get update && sudo apt-get install rpm python3-rpm -y && sudo apt-get upgrade python3-pip
+          sudo apt-get update && sudo apt-get install rpm python3-rpm -y
 
           pip3 install --user --break-system-packages --no-input tito
 

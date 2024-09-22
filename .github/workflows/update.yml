@@ -56,13 +56,12 @@ jobs:
           git commit -a -m "Update $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
           export DEBIAN_FRONTEND=noninteractive
+          PATH=~/.local/bin:$PATH
+          export PATH
 
           sudo apt-get update && sudo apt-get install rpm python3-rpm -y
 
-          pip3 install --break-system-packages --no-input tito
-
-          PATH=~/.local/bin:$PATH
-          export PATH
+          pip3 install --user --break-system-packages --no-input tito
 
           tito tag --accept-auto-changelog
 

@@ -71,8 +71,8 @@ class SysboxVersionTagger(VersionTagger):
         if old_version is None:
             old_version = "untagged"
         if not self.keep_version:
-            version_regex = re.compile("^(version:\s*)(.+)$", re.IGNORECASE)
-            release_regex = re.compile("^(release:\s*)(.+)$", re.IGNORECASE)
+            version_regex = re.compile(r"^(version:\s*)(.+)$", re.IGNORECASE)
+            release_regex = re.compile(r"^(release:\s*)(.+)$", re.IGNORECASE)
 
             in_f = open(self.spec_file, 'r')
             out_f = open(self.spec_file + ".new", 'w')

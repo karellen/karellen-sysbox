@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - **
+      - karellen-sysbox-**
 jobs:
   check-update:
     runs-on: ubuntu-24.04

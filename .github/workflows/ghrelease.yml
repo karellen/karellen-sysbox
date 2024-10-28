@@ -1,0 +1,29 @@
+name: karellen-sysbox-copr-release
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - **
+jobs:
+  check-update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 600
+    continue-on-error: false
+    env:
+      GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+      SEGMENT_DOWNLOAD_TIMEOUT_MINS: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: COPR to GitHub Release Action
+        uses: karellen/copr-to-gh-release@main
+        with:
+          copr-owner-name: karellen
+          copr-project-name: karellen-sysbox
+          copr-package-name: karellen-sysbox
+          tag-to-version-regex: '^karellen-sysbox-(\d.+)$'
+          tag: ${{ github.ref_name }}
+          clobber-assets: ${{ github.event_name == "push" && true || false }}
+          wait-build: true
+

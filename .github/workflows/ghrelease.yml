@@ -24,6 +24,6 @@ jobs:
           copr-package-name: karellen-sysbox
           tag-to-version-regex: '^karellen-sysbox-(\d.+)$'
           tag: ${{ github.ref_name }}
-          clobber-assets: ${{ github.event_name == "push" && true || false }}
+          clobber-assets: ${{ github.event_name == 'push' }}
           wait-build: true
 

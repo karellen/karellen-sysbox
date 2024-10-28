@@ -1,11 +1,14 @@
 name: karellen-sysbox-copr-release
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        required: true
   push:
     tags:
       - karellen-sysbox-**
 jobs:
-  check-update:
+  upload-assets:
     runs-on: ubuntu-24.04
     timeout-minutes: 600
     continue-on-error: false
@@ -23,7 +26,7 @@ jobs:
           copr-project-name: karellen-sysbox
           copr-package-name: karellen-sysbox
           tag-to-version-regex: '^karellen-sysbox-(\d.+)$'
-          tag: ${{ github.ref_name }}
+          tag: ${{ github.event_name == 'push' && github.ref_name || github.event.inputs.tag }}
           clobber-assets: ${{ github.event_name == 'push' }}
           wait-build: true
 

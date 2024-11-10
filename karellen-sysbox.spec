@@ -124,7 +124,7 @@ make DESTDIR=%{buildroot}%{_bindir} install
 %systemd_postun_with_restart sysbox-fs.service sysbox-mgr.service sysbox.service
 
 %changelog
-* Sat Nov 09 2024 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.5.0-2
+* Sat Nov 10 2024 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.6.5.0-2
 - Update to Golang 1.22 (arcadiy@ivanov.biz)
 
 * Sun Nov 10 2024 Karellen Supervisor <supervisor@karellen.co> 0.6.5.0-1

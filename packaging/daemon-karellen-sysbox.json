@@ -7,8 +7,8 @@
     }
   ],
   "runtimes": {
-    {
-      "sysbox-runc": {"path": "/usr/bin/sysbox-runc"}
+    "sysbox-runc": {
+      "path": "/usr/bin/sysbox-runc"
     }
   },
   "selinux-enabled": false

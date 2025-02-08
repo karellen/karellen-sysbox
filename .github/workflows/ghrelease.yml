@@ -55,7 +55,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
-          submodule: recursive
+          submodules: recursive
       - name: Build K8S Deploy Image
         run: |
           patch -p1 -d sysbox/sysbox-pkgr < sysbox-pkgr-0.patch

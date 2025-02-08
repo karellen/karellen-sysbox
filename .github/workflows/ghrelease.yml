@@ -20,7 +20,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
-          submodules: true
+          submodules: recursive
       - name: COPR to GitHub Release Action
         uses: karellen/copr-to-gh-release@main
         with:

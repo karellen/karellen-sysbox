@@ -20,7 +20,6 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
-          submodules: recursive
       - name: COPR to GitHub Release Action
         uses: karellen/copr-to-gh-release@main
         with:
@@ -31,8 +30,33 @@ jobs:
           tag: ${{ github.event_name == 'push' && github.ref_name || github.event.inputs.tag }}
           clobber-assets: ${{ github.event_name == 'push' }}
           wait-build: true
+  build-k8s-images:
+    name: build_k8s_image_${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      packages: write
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu24.04-arm
+          - ubuntu24.04
+
+    needs: upload-assets
+    timeout-minutes: 600
+    continue-on-error: false
+    env:
+      GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+      SEGMENT_DOWNLOAD_TIMEOUT_MINS: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 0
+          submodule: recursive
       - name: Build K8S Deploy Image
-        if: ${{ always() }}
         run: |
           patch -p1 -d sysbox/sysbox-pkgr < sysbox-pkgr-0.patch
           cd sysbox/sysbox-pkgr/k8s

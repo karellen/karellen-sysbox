@@ -30,4 +30,9 @@ jobs:
           tag: ${{ github.event_name == 'push' && github.ref_name || github.event.inputs.tag }}
           clobber-assets: ${{ github.event_name == 'push' }}
           wait-build: true
-
+      - name: Build K8S Deploy Image
+        if: ${{ always() }}
+        run: |
+          patch -p1 -d sysbox/sysbox-pkgr < sysbox-pkgr-0.patch
+          cd sysbox/sysbox-pkgr/k8s
+          make all

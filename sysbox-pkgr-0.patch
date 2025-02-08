@@ -1,0 +1,117 @@
+diff --git a/k8s/Makefile b/k8s/Makefile
+index 4c7116f..754f6af 100644
+--- a/k8s/Makefile
++++ b/k8s/Makefile
+@@ -3,8 +3,8 @@
+ #
+ 
+ .PHONY: sysbox-deploy-k8s-image \
+-	fetch_sysbox_ce_bins \
+-	fetch_sysbox_ee_bins \
++	fetch-sysbox-ce-bins \
++	fetch-sysbox-ce-rpm-bins \
+ 	check-sysbox-artifacts \
+ 	check-crio-artifacts \
+ 	clean-sysbox-ce clean-crio clean
+@@ -28,7 +28,8 @@ SYSBOX_BINS = sysbox-runc sysbox-mgr sysbox-fs
+ #     SYSBOX_CE_VER_SEMVER = 0.6.3
+ #     SYSBOX_CE_VER_FULL   = 0.6.3-1
+ #
+-SYSBOX_CE_VER = $(shell cat ../sources/sysbox/VERSION)
++SYSBOX_CE_VER_KARELLEN ?= $(shell cd ../../.. && git tag --points-at HEAD | sed 's/karellen-sysbox-//')
++SYSBOX_CE_VER ?= $(shell cat ../../VERSION)
+ SYSBOX_CE_VER_SEMVER = $(shell echo $(SYSBOX_CE_VER) | cut -d"-" -f1)
+ SYSBOX_CE_VER_FULL = $(shell echo $(SYSBOX_CE_VER) | sed '/-[0-9]/!s/.*/&-0/')
+ 
+@@ -79,6 +80,22 @@ fetch-sysbox-ce-bins:
+ 	cp $(TMPDIR)/sysbox-ce-generic/usr/bin/sysbox-* bin/sysbox-ce/generic/.
+ 	rm -rf $(TMPDIR)
+ 
++fetch-sysbox-ce-rpm-bins:
++	$(eval TMPDIR := $(shell mktemp -d))
++	@echo "TMPDIR = $(TMPDIR)"
++	set -e; for distro in $(shell curl -sL https://api.github.com/repos/karellen/karellen-sysbox/releases/tags/karellen-sysbox-$(SYSBOX_CE_VER_KARELLEN) | \
++	                jq -r '.assets[] | .browser_download_url' | grep -E '/centos-stream-|/epel|/fedora|/amazonlinux' | grep $(UNAME_M)); do \
++		distro_dir=$$(basename $$distro | sed 's/-karellen-sysbox.*//'); \
++		echo $$distro_dir; \
++		mkdir -p $(TMPDIR)/sysbox-ce-$$distro_dir; \
++		curl -sL "$$distro" | rpm2cpio - | cpio -idmv -D $(TMPDIR)/sysbox-ce-$$distro_dir; \
++		mkdir -p bin/sysbox-ce/$$distro_dir; \
++		rm -rf bin/sysbox-ce/$$distro_dir/*; \
++		cp $(TMPDIR)/sysbox-ce-$$distro_dir/usr/bin/sysbox-* bin/sysbox-ce/$$distro_dir/. ; \
++	done
++	rm -rf $(TMPDIR)
++
++
+ #
+ # CRI-O artifacts (only built if not already present at ./bin/crio)
+ #
+@@ -135,8 +152,8 @@ check-crio-artifacts:
+ 
+ all: sysbox-deploy-k8s-image
+ 
+-sysbox-deploy-k8s-image: build-crio check-crio-artifacts fetch-sysbox-ce-bins check-sysbox-artifacts
+-	docker build -t ghcr.io/nestybox/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) \
++sysbox-deploy-k8s-image: build-crio check-crio-artifacts fetch-sysbox-ce-bins fetch-sysbox-ce-rpm-bins check-sysbox-artifacts
++	docker build -t ghcr.io/nestybox/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) -t ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_KARELLEN)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) \
+ 		--build-arg sys_arch=$(SYS_ARCH) \
+ 		--build-arg sysbox_version=v$(SYSBOX_CE_VER_FULL) \
+ 		-f Dockerfile.sysbox-ce .
+diff --git a/k8s/scripts/sysbox-deploy-k8s.sh b/k8s/scripts/sysbox-deploy-k8s.sh
+index 0ebacce..604bdb4 100755
+--- a/k8s/scripts/sysbox-deploy-k8s.sh
++++ b/k8s/scripts/sysbox-deploy-k8s.sh
+@@ -271,7 +271,8 @@ function get_artifacts_dir() {
+ 
+ 	local distro=$os_distro_release
+ 
+-	if [[ "$distro" == "ubuntu-22.04" ]] ||
++	if [[ "$distro" == "ubuntu-24.04" ]] ||
++		[[ "$distro" == "ubuntu-22.04" ]] ||
+ 		[[ "$distro" == "ubuntu-21.10" ]] ||
+ 		[[ "$distro" == "ubuntu-20.04" ]] ||
+ 		[[ "$distro" == "ubuntu-18.04" ]] ||
+@@ -280,8 +281,21 @@ function get_artifacts_dir() {
+ 	elif [[ "$distro" =~ "flatcar" ]]; then
+ 		local release=$(echo $distro | cut -d"-" -f2)
+ 		artifacts_dir="${sysbox_artifacts}/bin/flatcar-${release}"
+-	else
+-		die "Sysbox is not supported on this host's distro ($distro)".
++	elif [[ "$distro" =~ "fedora" ]]; then
++		artifacts_dir="${sysbox_artifacts}/bin/$distro"
++	elif [[ "$distro" =~ "centos" ]]; then
++		local release=$(echo $distro | cut -d"-" -f2)
++		artifacts_dir="${sysbox_artifacts}/bin/centos-stream-$release"
++	elif [[ "$distro" =~ "rhel" ]]; then
++		local release=$(echo $distro | cut -d"-" -f2 | cut -d"." -f1)
++		artifacts_dir="${sysbox_artifacts}/bin/epel-$release"
++	elif [[ "$distro" =~ "amzn" ]]; then
++		local release=$(echo $distro | cut -d"-" -f2)
++		artifacts_dir="${sysbox_artifacts}/bin/amazonlinux-$release"
++	fi
++
++	if [[ -z "$artifacts_dir" ]] || [[ ! -d "$artifacts_dir" ]]; then
++		die "Sysbox is not supported on this host's distro ($distro): $artifacts_dir".
+ 	fi
+ 
+ 	echo $artifacts_dir
+@@ -742,12 +756,17 @@ function is_supported_distro() {
+ 
+ 	local distro=$os_distro_release
+ 
+-	if [[ "$distro" == "ubuntu-22.04" ]] ||
++	if [[ "$distro" == "ubuntu-24.04" ]] ||
++		[[ "$distro" == "ubuntu-22.04" ]] ||
+ 		[[ "$distro" == "ubuntu-21.10" ]] ||
+ 		[[ "$distro" == "ubuntu-20.04" ]] ||
+ 		[[ "$distro" == "ubuntu-18.04" ]] ||
+ 		[[ "$distro" =~ "debian" ]] ||
+-		[[ "$distro" =~ "flatcar" ]]; then
++		[[ "$distro" =~ "flatcar" ]] ||
++		[[ "$distro" =~ "fedora" ]] ||
++		[[ "$distro" =~ "centos" ]] ||
++		[[ "$distro" =~ "amzn" ]] ||
++		[[ "$distro" =~ "rhel" ]]; then
+ 		return
+ 	fi
+ 

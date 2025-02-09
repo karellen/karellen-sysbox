@@ -83,7 +83,7 @@ index 4c7116f..fc39113 100644
  #
  # Cleanup targets
 diff --git a/k8s/scripts/sysbox-deploy-k8s.sh b/k8s/scripts/sysbox-deploy-k8s.sh
-index 0ebacce..4c07bad 100755
+index 0ebacce..d18fd23 100755
 --- a/k8s/scripts/sysbox-deploy-k8s.sh
 +++ b/k8s/scripts/sysbox-deploy-k8s.sh
 @@ -271,7 +271,8 @@ function get_artifacts_dir() {
@@ -152,5 +152,16 @@ index 0ebacce..4c07bad 100755
 +		[[ "$distro" =~ "amzn" ]] ||
 +		[[ "$distro" =~ "rhel" ]]; then
  		return
+ 	fi
+ 
+@@ -871,8 +890,8 @@ function is_sysbox_config_changed() {
+ 		sysbox_fs_config=$(cat ${host_var_lib_sysbox_deploy_k8s}/sysbox_fs_config)
+ 	fi
+ 
+-	if [ "$sysbox_mgr_config" != "$SYSBOX_MGR_CONFIG" ] || [ "$sysbox_fs_config" != "$SYSBOX_FS_CONFIG" ]; then
+-		echo "Sysbox operational settings have changed -- sysbox-mgr: ${SYSBOX_MGR_CONFIG}, sysbox-fs: ${SYSBOX_FS_CONFIG}"
++	if [ "$sysbox_mgr_config" != "${SYSBOX_MGR_CONFIG:-}" ] || [ "$sysbox_fs_config" != "${SYSBOX_FS_CONFIG:-}" ]; then
++		echo "Sysbox operational settings have changed -- sysbox-mgr: ${SYSBOX_MGR_CONFIG:-}, sysbox-fs: ${SYSBOX_FS_CONFIG:-}"
+ 		return 0
  	fi
  

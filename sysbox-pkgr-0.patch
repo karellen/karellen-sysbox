@@ -83,7 +83,7 @@ index 4c7116f..fc39113 100644
  #
  # Cleanup targets
 diff --git a/k8s/scripts/sysbox-deploy-k8s.sh b/k8s/scripts/sysbox-deploy-k8s.sh
-index 0ebacce..604bdb4 100755
+index 0ebacce..4c07bad 100755
 --- a/k8s/scripts/sysbox-deploy-k8s.sh
 +++ b/k8s/scripts/sysbox-deploy-k8s.sh
 @@ -271,7 +271,8 @@ function get_artifacts_dir() {
@@ -120,6 +120,20 @@ index 0ebacce..604bdb4 100755
  	fi
  
  	echo $artifacts_dir
+@@ -330,11 +344,11 @@ function config_sysbox_env() {
+ # Update Sysbox's systemd unit files with the received configMap configuration
+ # corresponding to the sysbox-mgr and sysbox-fs services.
+ function config_sysbox() {
+-	if [ -n "$SYSBOX_MGR_CONFIG" ]; then
++	if [ -n "${SYSBOX_MGR_CONFIG:-}" ]; then
+ 		sed -i "/^ExecStart=/ s|/usr/bin/sysbox-mgr|/usr/bin/sysbox-mgr ${SYSBOX_MGR_CONFIG}|" ${sysbox_artifacts}/systemd/sysbox-mgr.service
+ 	fi
+ 
+-	if [ -n "$SYSBOX_FS_CONFIG" ]; then
++	if [ -n "${SYSBOX_FS_CONFIG:-}" ]; then
+ 		sed -i "/^ExecStart=/ s|/usr/bin/sysbox-fs|/usr/bin/sysbox-fs ${SYSBOX_FS_CONFIG}|" ${sysbox_artifacts}/systemd/sysbox-fs.service
+ 	fi
+ }
 @@ -742,12 +756,17 @@ function is_supported_distro() {
  
  	local distro=$os_distro_release

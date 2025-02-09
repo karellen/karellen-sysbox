@@ -96,3 +96,14 @@ jobs:
     steps:
       - name: Log in to registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+
+      - name: Merge images
+        run: |
+          PLATFORM_TAG="${SYSBOX_CE_VER_FULL}${SYSBOX_DEPLOY_K8S_IMAGE_PATCH}"
+          for TAG in "$PLATFORM_TAG" "${SYSBOX_CE_VER_KARELLEN}${SYSBOX_DEPLOY_K8S_IMAGE_PATCH}" latest; do
+              docker manifest create ghcr.io/karellen/sysbox-deploy-k8s:$TAG \
+                    --amend ghcr.io/karellen/sysbox-deploy-k8s:v${PLATFORM_TAG}-amd64 \
+                    --amend ghcr.io/karellen/sysbox-deploy-k8s:v${PLATFORM_TAG}-arm64
+              docker manifest push ghcr.io/karellen/sysbox-deploy-k8s:$TAG
+          done
+

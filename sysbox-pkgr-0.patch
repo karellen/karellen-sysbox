@@ -1,5 +1,5 @@
 diff --git a/k8s/Makefile b/k8s/Makefile
-index 4c7116f..754f6af 100644
+index 4c7116f..18cbcff 100644
 --- a/k8s/Makefile
 +++ b/k8s/Makefile
 @@ -3,8 +3,8 @@
@@ -46,17 +46,31 @@ index 4c7116f..754f6af 100644
  #
  # CRI-O artifacts (only built if not already present at ./bin/crio)
  #
-@@ -135,8 +152,8 @@ check-crio-artifacts:
+@@ -135,11 +152,22 @@ check-crio-artifacts:
  
  all: sysbox-deploy-k8s-image
  
 -sysbox-deploy-k8s-image: build-crio check-crio-artifacts fetch-sysbox-ce-bins check-sysbox-artifacts
 -	docker build -t ghcr.io/nestybox/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) \
 +sysbox-deploy-k8s-image: build-crio check-crio-artifacts fetch-sysbox-ce-bins fetch-sysbox-ce-rpm-bins check-sysbox-artifacts
-+	docker build -t ghcr.io/nestybox/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) -t ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_KARELLEN)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) \
++	set -e; \
++	if [ -n "$${GITHUB_ACTIONS}" ] && [ -n "$$GITHUB_OUTPUT" ]; then \
++		echo "SYSBOX_CE_VER_FULL=$(SYSBOX_CE_VER_FULL)" >> "$$GITHUB_OUTPUT"; \
++		echo "SYSBOX_CE_VER_KARELLEN=$(SYSBOX_CE_VER_KARELLEN)" >> "$$GITHUB_OUTPUT"; \
++		echo "SYSBOX_DEPLOY_K8S_IMAGE_PATCH=$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH)" >> "$$GITHUB_OUTPUT"; \
++	fi
++	docker build -t ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) -t ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_KARELLEN)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) \
  		--build-arg sys_arch=$(SYS_ARCH) \
  		--build-arg sysbox_version=v$(SYSBOX_CE_VER_FULL) \
  		-f Dockerfile.sysbox-ce .
++	set -e; \
++	if [ -n "$${GITHUB_ACTIONS}" ]; then \
++		docker push ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH); \
++		docker push ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_KARELLEN)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH); \
++	fi
+ 
+ #
+ # Cleanup targets
 diff --git a/k8s/scripts/sysbox-deploy-k8s.sh b/k8s/scripts/sysbox-deploy-k8s.sh
 index 0ebacce..604bdb4 100755
 --- a/k8s/scripts/sysbox-deploy-k8s.sh

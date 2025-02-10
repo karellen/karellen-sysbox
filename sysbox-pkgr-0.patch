@@ -201,3 +201,16 @@ index 6c8a3de..1bf6f3e 100755
  }
  
  function install_shiftfs() {
+diff --git a/k8s/systemd/99-sysbox-sysctl.conf b/k8s/systemd/99-sysbox-sysctl.conf
+index ce903bc..5177a58 100644
+--- a/k8s/systemd/99-sysbox-sysctl.conf
++++ b/k8s/systemd/99-sysbox-sysctl.conf
+@@ -1,7 +1,7 @@
+ # Sysbox's sysctl.d requirements
+ 
+ # Enable user-namespaces in kernel.
+-kernel.unprivileged_userns_clone = 1
++# kernel.unprivileged_userns_clone = 1
+ 
+ # Increase default "inotify" kernel resources for scaling purposes.
+ fs.inotify.max_queued_events = 1048576

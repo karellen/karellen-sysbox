@@ -165,3 +165,39 @@ index 0ebacce..d18fd23 100755
  		return 0
  	fi
  
+diff --git a/k8s/scripts/sysbox-installer-helper.sh b/k8s/scripts/sysbox-installer-helper.sh
+index 6c8a3de..1bf6f3e 100755
+--- a/k8s/scripts/sysbox-installer-helper.sh
++++ b/k8s/scripts/sysbox-installer-helper.sh
+@@ -86,14 +86,25 @@ function semver_ge() {
+ }
+ 
+ function install_package_deps() {
++	DNF="$(which dnf 2>/dev/null || true)"
++	YUM="$(which yum 2>/dev/null || true)"
+ 
+-	# Need this to work-around "E: dpkg was interrupted, you must manually run 'dpkg --configure -a' to correct the problem."
+-	dpkg --configure -a
++	if [ -n "$DNF" ] || [ -n "$YUM" ]; then
++		if [ -n "$DNF" ]; then
++			YUM=""
++		fi
++		DNF="$DNF$YUM" # Either YUM is empty or DNF is not present
++
++		$DNF install -y rsync fuse iptables-nft
++	else
++		# Need this to work-around "E: dpkg was interrupted, you must manually run 'dpkg --configure -a' to correct the problem."
++		dpkg --configure -a
+ 
+-	# Certificates package is required prior to running apt-update.
+-	apt-get -y install ca-certificates
+-	apt-get update
+-	apt-get install -y rsync fuse iptables
++		# Certificates package is required prior to running apt-update.
++		apt-get -y install ca-certificates
++		apt-get update
++		apt-get install -y rsync fuse iptables
++	fi
+ }
+ 
+ function install_shiftfs() {

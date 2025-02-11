@@ -82,6 +82,32 @@ index 4c7116f..fc39113 100644
  
  #
  # Cleanup targets
+diff --git a/k8s/manifests/daemonset/sysbox-cleanup-k8s.yaml b/k8s/manifests/daemonset/sysbox-cleanup-k8s.yaml
+index f4b23bb..4387df2 100644
+--- a/k8s/manifests/daemonset/sysbox-cleanup-k8s.yaml
++++ b/k8s/manifests/daemonset/sysbox-cleanup-k8s.yaml
+@@ -18,7 +18,7 @@ spec:
+           sysbox-runtime: running
+       containers:
+       - name: sysbox-cleanup-k8s
+-        image: registry.nestybox.com/nestybox/sysbox-deploy-k8s
++        image: ghcr.io/karellen/sysbox-deploy-k8s
+         imagePullPolicy: Always
+         command: [ "bash", "-c", "/opt/sysbox/scripts/sysbox-deploy-k8s.sh ce cleanup" ]
+         env:
+diff --git a/k8s/manifests/daemonset/sysbox-deploy-k8s.yaml b/k8s/manifests/daemonset/sysbox-deploy-k8s.yaml
+index 1afc943..bdfe9fe 100644
+--- a/k8s/manifests/daemonset/sysbox-deploy-k8s.yaml
++++ b/k8s/manifests/daemonset/sysbox-deploy-k8s.yaml
+@@ -18,7 +18,7 @@ spec:
+         sysbox-install: "yes"
+       containers:
+       - name: sysbox-deploy-k8s
+-        image: registry.nestybox.com/nestybox/sysbox-deploy-k8s
++        image: ghcr.io/karellen/sysbox-deploy-k8s
+         imagePullPolicy: Always
+         command: [ "bash", "-c", "/opt/sysbox/scripts/sysbox-deploy-k8s.sh ce install" ]
+         env:
 diff --git a/k8s/scripts/sysbox-deploy-k8s.sh b/k8s/scripts/sysbox-deploy-k8s.sh
 index 0ebacce..d18fd23 100755
 --- a/k8s/scripts/sysbox-deploy-k8s.sh

@@ -30,6 +30,7 @@ Requires: (docker or docker-ce)
 Requires: systemd
 Requires: fuse
 Requires: libseccomp
+Requires: rsync
 
 Provides: sysbox
 

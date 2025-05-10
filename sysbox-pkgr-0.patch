@@ -108,89 +108,6 @@ index 1afc943..bdfe9fe 100644
          imagePullPolicy: Always
          command: [ "bash", "-c", "/opt/sysbox/scripts/sysbox-deploy-k8s.sh ce install" ]
          env:
-diff --git a/k8s/scripts/sysbox-deploy-k8s.sh b/k8s/scripts/sysbox-deploy-k8s.sh
-index 0ebacce..d18fd23 100755
---- a/k8s/scripts/sysbox-deploy-k8s.sh
-+++ b/k8s/scripts/sysbox-deploy-k8s.sh
-@@ -271,7 +271,8 @@ function get_artifacts_dir() {
- 
- 	local distro=$os_distro_release
- 
--	if [[ "$distro" == "ubuntu-22.04" ]] ||
-+	if [[ "$distro" == "ubuntu-24.04" ]] ||
-+		[[ "$distro" == "ubuntu-22.04" ]] ||
- 		[[ "$distro" == "ubuntu-21.10" ]] ||
- 		[[ "$distro" == "ubuntu-20.04" ]] ||
- 		[[ "$distro" == "ubuntu-18.04" ]] ||
-@@ -280,8 +281,21 @@ function get_artifacts_dir() {
- 	elif [[ "$distro" =~ "flatcar" ]]; then
- 		local release=$(echo $distro | cut -d"-" -f2)
- 		artifacts_dir="${sysbox_artifacts}/bin/flatcar-${release}"
--	else
--		die "Sysbox is not supported on this host's distro ($distro)".
-+	elif [[ "$distro" =~ "fedora" ]]; then
-+		artifacts_dir="${sysbox_artifacts}/bin/$distro"
-+	elif [[ "$distro" =~ "centos" ]]; then
-+		local release=$(echo $distro | cut -d"-" -f2)
-+		artifacts_dir="${sysbox_artifacts}/bin/centos-stream-$release"
-+	elif [[ "$distro" =~ "rhel" ]]; then
-+		local release=$(echo $distro | cut -d"-" -f2 | cut -d"." -f1)
-+		artifacts_dir="${sysbox_artifacts}/bin/epel-$release"
-+	elif [[ "$distro" =~ "amzn" ]]; then
-+		local release=$(echo $distro | cut -d"-" -f2)
-+		artifacts_dir="${sysbox_artifacts}/bin/amazonlinux-$release"
-+	fi
-+
-+	if [[ -z "$artifacts_dir" ]] || [[ ! -d "$artifacts_dir" ]]; then
-+		die "Sysbox is not supported on this host's distro ($distro): $artifacts_dir".
- 	fi
- 
- 	echo $artifacts_dir
-@@ -330,11 +344,11 @@ function config_sysbox_env() {
- # Update Sysbox's systemd unit files with the received configMap configuration
- # corresponding to the sysbox-mgr and sysbox-fs services.
- function config_sysbox() {
--	if [ -n "$SYSBOX_MGR_CONFIG" ]; then
-+	if [ -n "${SYSBOX_MGR_CONFIG:-}" ]; then
- 		sed -i "/^ExecStart=/ s|/usr/bin/sysbox-mgr|/usr/bin/sysbox-mgr ${SYSBOX_MGR_CONFIG}|" ${sysbox_artifacts}/systemd/sysbox-mgr.service
- 	fi
- 
--	if [ -n "$SYSBOX_FS_CONFIG" ]; then
-+	if [ -n "${SYSBOX_FS_CONFIG:-}" ]; then
- 		sed -i "/^ExecStart=/ s|/usr/bin/sysbox-fs|/usr/bin/sysbox-fs ${SYSBOX_FS_CONFIG}|" ${sysbox_artifacts}/systemd/sysbox-fs.service
- 	fi
- }
-@@ -742,12 +756,17 @@ function is_supported_distro() {
- 
- 	local distro=$os_distro_release
- 
--	if [[ "$distro" == "ubuntu-22.04" ]] ||
-+	if [[ "$distro" == "ubuntu-24.04" ]] ||
-+		[[ "$distro" == "ubuntu-22.04" ]] ||
- 		[[ "$distro" == "ubuntu-21.10" ]] ||
- 		[[ "$distro" == "ubuntu-20.04" ]] ||
- 		[[ "$distro" == "ubuntu-18.04" ]] ||
- 		[[ "$distro" =~ "debian" ]] ||
--		[[ "$distro" =~ "flatcar" ]]; then
-+		[[ "$distro" =~ "flatcar" ]] ||
-+		[[ "$distro" =~ "fedora" ]] ||
-+		[[ "$distro" =~ "centos" ]] ||
-+		[[ "$distro" =~ "amzn" ]] ||
-+		[[ "$distro" =~ "rhel" ]]; then
- 		return
- 	fi
- 
-@@ -871,8 +890,8 @@ function is_sysbox_config_changed() {
- 		sysbox_fs_config=$(cat ${host_var_lib_sysbox_deploy_k8s}/sysbox_fs_config)
- 	fi
- 
--	if [ "$sysbox_mgr_config" != "$SYSBOX_MGR_CONFIG" ] || [ "$sysbox_fs_config" != "$SYSBOX_FS_CONFIG" ]; then
--		echo "Sysbox operational settings have changed -- sysbox-mgr: ${SYSBOX_MGR_CONFIG}, sysbox-fs: ${SYSBOX_FS_CONFIG}"
-+	if [ "$sysbox_mgr_config" != "${SYSBOX_MGR_CONFIG:-}" ] || [ "$sysbox_fs_config" != "${SYSBOX_FS_CONFIG:-}" ]; then
-+		echo "Sysbox operational settings have changed -- sysbox-mgr: ${SYSBOX_MGR_CONFIG:-}, sysbox-fs: ${SYSBOX_FS_CONFIG:-}"
- 		return 0
- 	fi
- 
 diff --git a/k8s/scripts/sysbox-installer-helper.sh b/k8s/scripts/sysbox-installer-helper.sh
 index 6c8a3de..1bf6f3e 100755
 --- a/k8s/scripts/sysbox-installer-helper.sh
@@ -251,3 +168,67 @@ index ebe23c4..f0895d8 100644
  metadata:
    name: sysbox-runc
 
+diff --git a/k8s/scripts/sysbox-deploy-k8s.sh b/k8s/scripts/sysbox-deploy-k8s.sh
+index 0012cec..85633cf 100755
+--- a/k8s/scripts/sysbox-deploy-k8s.sh
++++ b/k8s/scripts/sysbox-deploy-k8s.sh
+@@ -281,6 +281,21 @@ function get_artifacts_dir() {
+ 	elif [[ "$distro" =~ "flatcar" ]]; then
+ 		local release=$(echo $distro | cut -d"-" -f2)
+ 		artifacts_dir="${sysbox_artifacts}/bin/flatcar-${release}"
++	elif [[ "$distro" =~ "fedora" ]]; then
++		artifacts_dir="${sysbox_artifacts}/bin/$distro"
++	elif [[ "$distro" =~ "centos" ]]; then
++		local release=$(echo $distro | cut -d"-" -f2)
++		artifacts_dir="${sysbox_artifacts}/bin/centos-stream-$release"
++	elif [[ "$distro" =~ "rhel" ]]; then
++		local release=$(echo $distro | cut -d"-" -f2 | cut -d"." -f1)
++		artifacts_dir="${sysbox_artifacts}/bin/epel-$release"
++	elif [[ "$distro" =~ "amzn" ]]; then
++		local release=$(echo $distro | cut -d"-" -f2)
++		artifacts_dir="${sysbox_artifacts}/bin/amazonlinux-$release"
++	fi
++
++	if [[ -z "$artifacts_dir" ]] || [[ ! -d "$artifacts_dir" ]]; then
++		die "Sysbox is not supported on this host's distro ($distro): $artifacts_dir".
+ 	fi
+ 
+ 	echo $artifacts_dir
+@@ -329,11 +344,11 @@ function config_sysbox_env() {
+ # Update Sysbox's systemd unit files with the received configMap configuration
+ # corresponding to the sysbox-mgr and sysbox-fs services.
+ function config_sysbox() {
+-	if [ -n "$SYSBOX_MGR_CONFIG" ]; then
++	if [ -n "${SYSBOX_MGR_CONFIG:-}" ]; then
+ 		sed -i "/^ExecStart=/ s|/usr/bin/sysbox-mgr|/usr/bin/sysbox-mgr ${SYSBOX_MGR_CONFIG}|" ${sysbox_artifacts}/systemd/sysbox-mgr.service
+ 	fi
+ 
+-	if [ -n "$SYSBOX_FS_CONFIG" ]; then
++	if [ -n "${SYSBOX_FS_CONFIG:-}" ]; then
+ 		sed -i "/^ExecStart=/ s|/usr/bin/sysbox-fs|/usr/bin/sysbox-fs ${SYSBOX_FS_CONFIG}|" ${sysbox_artifacts}/systemd/sysbox-fs.service
+ 	fi
+ }
+@@ -747,7 +762,11 @@ function is_supported_distro() {
+ 		[[ "$distro" == "ubuntu-20.04" ]] ||
+ 		[[ "$distro" == "ubuntu-18.04" ]] ||
+ 		[[ "$distro" =~ "debian" ]] ||
+-		[[ "$distro" =~ "flatcar" ]]; then
++		[[ "$distro" =~ "flatcar" ]] ||
++		[[ "$distro" =~ "fedora" ]] ||
++		[[ "$distro" =~ "centos" ]] ||
++		[[ "$distro" =~ "amzn" ]] ||
++		[[ "$distro" =~ "rhel" ]]; then
+ 		return
+ 	fi
+ 
+@@ -872,8 +891,8 @@ function is_sysbox_config_changed() {
+ 		sysbox_fs_config=$(cat ${host_var_lib_sysbox_deploy_k8s}/sysbox_fs_config)
+ 	fi
+ 
+-	if [ "$sysbox_mgr_config" != "$SYSBOX_MGR_CONFIG" ] || [ "$sysbox_fs_config" != "$SYSBOX_FS_CONFIG" ]; then
+-		echo "Sysbox operational settings have changed -- sysbox-mgr: ${SYSBOX_MGR_CONFIG}, sysbox-fs: ${SYSBOX_FS_CONFIG}"
++	if [ "$sysbox_mgr_config" != "${SYSBOX_MGR_CONFIG:-}" ] || [ "$sysbox_fs_config" != "${SYSBOX_FS_CONFIG:-}" ]; then
++		echo "Sysbox operational settings have changed -- sysbox-mgr: ${SYSBOX_MGR_CONFIG:-}, sysbox-fs: ${SYSBOX_FS_CONFIG:-}"
+ 		return 0
+ 	fi
+ 

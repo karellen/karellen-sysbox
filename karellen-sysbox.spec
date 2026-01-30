@@ -1,5 +1,7 @@
 %global debug_package %{nil}
 %global _missing_build_ids_terminate_build 0
+%global golang_version 1.24.12
+%global protoc_version 3.15.8
 
 Name: karellen-sysbox
 Version: 0.6.7.32
@@ -65,10 +67,10 @@ Restart docker daemon (systemctl restart docker) after configuration changes.
 cd /tmp
 mkdir -p $HOME/.local
 export PATH="$PATH:$HOME/.local/bin:$HOME/.local/go/bin"
-wget https://go.dev/dl/go1.24.3.linux-%{sys_arch}.tar.gz
-tar -C $HOME/.local -xzf go1.24.3.linux-%{sys_arch}.tar.gz
-curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-%{protoc_arch}.zip
-unzip -u protoc-3.15.8-linux-%{protoc_arch}.zip -d $HOME/.local
+wget https://go.dev/dl/go%{golang_version}.linux-%{sys_arch}.tar.gz
+tar -C $HOME/.local -xzf go%{golang_version}.linux-%{sys_arch}.tar.gz
+curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v%{protoc_version}/protoc-%{protoc_version}-linux-%{protoc_arch}.zip
+unzip -u protoc-%{protoc_version}-linux-%{protoc_arch}.zip -d $HOME/.local
 go install github.com/golang/protobuf/protoc-gen-go@latest
 export PATH="$PATH:$(go env GOPATH)/bin"
 

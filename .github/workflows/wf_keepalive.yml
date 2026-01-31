@@ -2,8 +2,10 @@ name: Keepalive Workflow
 on:
   schedule:
     - cron: "0 0 * * *"
+  workflow_dispatch:
 permissions:
   actions: write
+  contents: read
 jobs:
   cronjob-based-github-action:
     name: Keepalive Workflow

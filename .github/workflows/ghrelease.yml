@@ -78,6 +78,7 @@ jobs:
         run: |
           patch -p1 -d sysbox/sysbox-pkgr < sysbox-pkgr-0.patch
           cd sysbox/sysbox-pkgr/k8s
+          mkdir -p bin
           make all
 
   assemble-images:

@@ -44,7 +44,22 @@ jobs:
           done <<< "$(git submodule status)"
 
           if [ -z "$MODULES_CHANGED" ]; then
-              echo "# No submodules changed detected - exiting!" >> $GITHUB_STEP_SUMMARY
+              echo "# No submodules changed detected" >> $GITHUB_STEP_SUMMARY
+
+              LAST_COMMIT_DATE=$(git log -1 --format=%ct)
+              NOW=$(date +%s)
+              DAYS_SINCE_LAST_COMMIT=$(( (NOW - LAST_COMMIT_DATE) / 86400 ))
+
+              if [ "$DAYS_SINCE_LAST_COMMIT" -ge 30 ]; then
+                  echo "## Last commit was $DAYS_SINCE_LAST_COMMIT days ago - creating keepalive commit" >> $GITHUB_STEP_SUMMARY
+                  git config --global user.email "supervisor@karellen.co"
+                  git config --global user.name "Karellen Supervisor"
+                  git commit --allow-empty -m "Keepalive $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                  git push
+              else
+                  echo "## Last commit was $DAYS_SINCE_LAST_COMMIT days ago - no keepalive needed" >> $GITHUB_STEP_SUMMARY
+              fi
+
               exit 0
           fi
 

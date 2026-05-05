@@ -4,8 +4,8 @@
 %global protoc_version 3.15.8
 
 Name: karellen-sysbox
-Version: 0.7.0.3
-Release: 3
+Version: 0.7.0.11
+Release: 1
 License: ASL 2.0
 Summary: Karellen Sysbox is an UNOFFICIAL Fedora/RHEL/CentOS spin of the Nestybox Sysbox.
 Url: https://github.com/karellen/%{name}
@@ -127,6 +127,10 @@ make DESTDIR=%{buildroot}%{_bindir} install
 %systemd_postun_with_restart sysbox-fs.service sysbox-mgr.service sysbox.service
 
 %changelog
+* Tue May 05 2026 Karellen Supervisor <supervisor@karellen.co> 0.7.0.11-1
+- Update 2026-05-05T00:44:41Z (supervisor@karellen.co)
+- Bump outdated GHA actions [skip ci] (arcadiy@ivanov.biz)
+
 * Sat Mar 28 2026 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.7.0.3-3
 - Fix CI: remove broken keepalive workflow, fix K8s image build permissions,
   regenerate patch (arcadiy@ivanov.biz)

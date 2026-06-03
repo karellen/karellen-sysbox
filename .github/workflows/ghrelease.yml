@@ -76,10 +76,7 @@ jobs:
       - name: Build K8S Deploy Image
         id: image
         run: |
-          patch -p1 -d sysbox/sysbox-pkgr < sysbox-pkgr-0.patch
-          cd sysbox/sysbox-pkgr/k8s
-          mkdir -p bin
-          make all
+          ./build.sh
 
   assemble-images:
     runs-on: ubuntu-24.04

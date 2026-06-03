@@ -1,8 +1,8 @@
 diff --git a/k8s/Makefile b/k8s/Makefile
-index bb5de53..e3960ab 100644
+index bb5de53..9a9f141 100644
 --- a/k8s/Makefile
 +++ b/k8s/Makefile
-@@ -3,8 +3,8 @@
+@@ -3,8 +3,9 @@
  #
  
  .PHONY: sysbox-deploy-k8s-image \
@@ -10,10 +10,11 @@ index bb5de53..e3960ab 100644
 -	fetch_sysbox_ee_bins \
 +	fetch-sysbox-ce-bins \
 +	fetch-sysbox-ce-rpm-bins \
++	fetch-crio \
  	check-sysbox-artifacts \
  	check-crio-artifacts \
  	clean-sysbox-ce clean-crio clean
-@@ -28,7 +28,8 @@ SYSBOX_BINS = sysbox-runc sysbox-mgr sysbox-fs
+@@ -28,12 +29,13 @@ SYSBOX_BINS = sysbox-runc sysbox-mgr sysbox-fs
  #     SYSBOX_CE_VER_SEMVER = 0.6.3
  #     SYSBOX_CE_VER_FULL   = 0.6.3-1
  #
@@ -23,7 +24,13 @@ index bb5de53..e3960ab 100644
  SYSBOX_CE_VER_SEMVER = $(shell echo $(SYSBOX_CE_VER) | cut -d"-" -f1)
  SYSBOX_CE_VER_FULL = $(shell echo $(SYSBOX_CE_VER) | sed '/-[0-9]/!s/.*/&-0/')
  
-@@ -58,6 +59,11 @@ else ifeq ($(UNAME_M),armel)
+ # CRIO versions to build.
+-CRIO_VERSIONS = v1.32 v1.33 v1.34 v1.35
++CRIO_VERSIONS = v1.30 v1.31 v1.32 v1.33 v1.34 v1.35 v1.36 
+ 
+ # Patch version is used to track changes to the sysbox-deploy-k8s image not related to
+ # the Sysbox's version. For example, if we need to rebuild the sysbox-deploy-k8s image
+@@ -58,6 +60,11 @@ else ifeq ($(UNAME_M),armel)
  	SYS_ARCH := armel
  endif
  
@@ -35,7 +42,7 @@ index bb5de53..e3960ab 100644
  #
  # Sysbox artifacts for Ubuntu distro
  #
-@@ -79,6 +85,22 @@ fetch-sysbox-ce-bins:
+@@ -79,23 +86,30 @@ fetch-sysbox-ce-bins:
  	cp $(TMPDIR)/sysbox-ce-generic/usr/bin/sysbox-* bin/sysbox-ce/generic/.
  	rm -rf $(TMPDIR)
  
@@ -56,25 +63,66 @@ index bb5de53..e3960ab 100644
 +
 +
  #
- # CRI-O artifacts (only built if not already present at ./bin/crio)
+-# CRI-O artifacts (only built if not already present at ./bin/crio)
++# CRI-O artifacts (fetched from karellen-sysbox-crio GitHub releases)
  #
-@@ -135,11 +157,21 @@ check-crio-artifacts:
+ CRIO_BINS_DIR := $(PWD)/bin/crio
+ 
+-ifeq ($(wildcard $(CRIO_BINS_DIR)),)
+-build-crio: crio-build-container
+-	@echo "NOTE: building CRI-O binaries at ${PWD}/bin/crio"
+-	docker run --rm -v $(shell pwd)/bin:/mnt/results crio-bld
+-else
+-build-crio:
+-	@echo "NOTE: Skipping CRI-O build (found binaries at ${PWD}/bin/crio)"
+-endif
+-
+-crio-build-container:
+-	docker build -t crio-bld -f Dockerfile.crio --build-arg sys_arch=$(SYS_ARCH) \
+-		--build-arg CRIO_VERSIONS="${CRIO_VERSIONS}" .
++fetch-crio:
++	@echo "Fetching pre-built CRI-O binaries ..."
++	scripts/crio-fetch.sh $(CRIO_BINS_DIR) $(SYS_ARCH) $(CRIO_VERSIONS)
+ 
+ #
+ # The check-* targets verify that CRI-O, Sysbox binaries and its dependencies are
+@@ -126,8 +140,9 @@ check-sysbox-artifacts:
+ 	$(foreach file,$(SYSBOX_BINS),[ -f "bin/sysbox-ce/generic/$(file)" ] || "missing sysbox-ce binary: bin/sysbox-ce/generic/$(file)")
+ 
+ check-crio-artifacts:
+-	@$(foreach version,$(CRIO_VERSIONS),[ -f "bin/crio/$(version)/crio" ] || "missing CRI-O binary: bin/crio/$(version)/crio";)
+-	@$(foreach version,$(CRIO_VERSIONS),[ -f "bin/crio/$(version)/pinns" ] || "missing CRI-O binary: bin/crio/$(version)/pinns";)
++	@$(foreach version,$(CRIO_VERSIONS),ls bin/crio/$(version).*/crio >/dev/null 2>&1 || (echo "missing CRI-O binaries for $(version)" && false);)
++	@$(foreach version,$(CRIO_VERSIONS),ls bin/crio/$(version).*/pinns >/dev/null 2>&1 || (echo "missing CRI-O pinns binaries for $(version)" && false);)
++	@$(foreach version,$(CRIO_VERSIONS),ls bin/crio/$(version).*/crictl >/dev/null 2>&1 || (echo "missing crictl binaries for $(version)" && false);)
+ 
+ #
+ # These targets build the sysbox-deploy-k8s images for sysbox-ce
+@@ -135,11 +150,28 @@ check-crio-artifacts:
  
  all: sysbox-deploy-k8s-image
  
 -sysbox-deploy-k8s-image: build-crio check-crio-artifacts fetch-sysbox-ce-bins check-sysbox-artifacts
 -	docker build -t ghcr.io/nestybox/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) \
-+sysbox-deploy-k8s-image: build-crio check-crio-artifacts fetch-sysbox-ce-bins fetch-sysbox-ce-rpm-bins check-sysbox-artifacts
++sysbox-deploy-k8s-image: fetch-crio check-crio-artifacts fetch-sysbox-ce-bins fetch-sysbox-ce-rpm-bins check-sysbox-artifacts
 +	set -e; \
 +	if [ -n "$${GITHUB_ACTIONS}" ] && [ -n "$$GITHUB_OUTPUT" ]; then \
 +		echo "SYSBOX_CE_VER_FULL=$(SYSBOX_CE_VER_FULL)" >> "$$GITHUB_OUTPUT"; \
 +		echo "SYSBOX_CE_VER_KARELLEN=$(SYSBOX_CE_VER_KARELLEN)" >> "$$GITHUB_OUTPUT"; \
 +		echo "SYSBOX_DEPLOY_K8S_IMAGE_PATCH=$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH)" >> "$$GITHUB_OUTPUT"; \
 +	fi
++	cp Dockerfile.sysbox-ce Dockerfile.sysbox-ce.tmp
++	sed -i '/COPY bin\/crio\/.*crio-patched/d' Dockerfile.sysbox-ce.tmp
++	sed -i '/COPY bin\/crio\/.*pinns-patched/d' Dockerfile.sysbox-ce.tmp
++	sed -i '/ARG CRICTL_VERSION/d' Dockerfile.sysbox-ce.tmp
++	sed -i '/crictl will be copied/,/rm -f crictl/d' Dockerfile.sysbox-ce.tmp
++	echo 'COPY bin/crio/ /opt/crio-deploy/patched/' >> Dockerfile.sysbox-ce.tmp
 +	docker build -t ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH)$(ARCH_TAG) \
  		--build-arg sys_arch=$(SYS_ARCH) \
  		--build-arg sysbox_version=v$(SYSBOX_CE_VER_FULL) \
- 		-f Dockerfile.sysbox-ce .
+-		-f Dockerfile.sysbox-ce .
++		-f Dockerfile.sysbox-ce.tmp .
++	rm -f Dockerfile.sysbox-ce.tmp
 +	set -e; \
 +	if [ -n "$${GITHUB_ACTIONS}" ]; then \
 +		docker push ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH)$(ARCH_TAG); \
@@ -108,10 +156,100 @@ index 1afc943..bdfe9fe 100644
          imagePullPolicy: Always
          command: [ "bash", "-c", "/opt/sysbox/scripts/sysbox-deploy-k8s.sh ce install" ]
          env:
+diff --git a/k8s/scripts/crio-fetch.sh b/k8s/scripts/crio-fetch.sh
+new file mode 100755
+index 0000000..fee518e
+--- /dev/null
++++ b/k8s/scripts/crio-fetch.sh
+@@ -0,0 +1,53 @@
++#!/bin/bash
++
++#
++# Download pre-built patched CRI-O binaries from karellen-sysbox-crio releases.
++# Downloads ALL available micro versions for each minor.
++#
++# Usage: crio-fetch.sh <output-dir> <arch> <versions...>
++# Example: crio-fetch.sh bin/crio amd64 v1.32 v1.33 v1.34 v1.35
++#
++
++set -eEux
++set -o pipefail
++
++RESULTS_DIR="${1:?Usage: crio-fetch.sh <output-dir> <arch> <versions...>}"
++SYS_ARCH="${2:?Usage: crio-fetch.sh <output-dir> <arch> <versions...>}"
++shift 2
++
++REPO="karellen/karellen-sysbox-crio"
++
++ALL_RELEASES=$(gh release list -R "$REPO" --exclude-drafts --limit 1000 \
++    --json tagName --jq '.[].tagName')
++
++for minor in "$@"; do
++    MICRO_TAGS=$(echo "$ALL_RELEASES" | grep "^${minor}\." | sort -V)
++
++    if [ -z "$MICRO_TAGS" ]; then
++        echo "ERROR: No published releases found for ${minor} in ${REPO}" >&2
++        exit 1
++    fi
++
++    for tag in $MICRO_TAGS; do
++        if [ -f "${RESULTS_DIR}/${tag}/crio" ] && [ -f "${RESULTS_DIR}/${tag}/pinns" ] && [ -f "${RESULTS_DIR}/${tag}/crictl" ]; then
++            echo "Skip fetching CRI-O ${tag} -- binaries already present"
++            continue
++        fi
++
++        echo "Fetching CRI-O ${tag} patched binaries ..."
++
++        _tmpdir=$(mktemp -d)
++        trap "rm -rf '$_tmpdir'" EXIT
++
++        gh release download "$tag" -R "$REPO" \
++            --pattern "crio-${tag}-${SYS_ARCH}.tar.gz" \
++            --dir "$_tmpdir"
++
++        mkdir -p "${RESULTS_DIR}/${tag}"
++        tar -xzf "${_tmpdir}/crio-${tag}-${SYS_ARCH}.tar.gz" -C "${RESULTS_DIR}/${tag}"
++        rm -rf "$_tmpdir"
++        trap - EXIT
++
++        echo "Fetched CRI-O ${tag} (${SYS_ARCH}) -> ${RESULTS_DIR}/${tag}/"
++    done
++done
 diff --git a/k8s/scripts/sysbox-deploy-k8s.sh b/k8s/scripts/sysbox-deploy-k8s.sh
-index 8409df3..0c05c90 100755
+index 8409df3..7af4e33 100755
 --- a/k8s/scripts/sysbox-deploy-k8s.sh
 +++ b/k8s/scripts/sysbox-deploy-k8s.sh
+@@ -103,9 +103,9 @@ sysbox_install_in_progress="false"
+ function deploy_crio_installer_service() {
+ 	echo "Deploying CRI-O installer agent on the host ($k8s_version) ..."
+ 
+-	cp ${crio_artifacts}/bin/${k8s_version}/cri-o.${sys_arch}.tar.gz ${host_local_bin}/cri-o.${sys_arch}.tar.gz
+-	cp ${crio_artifacts}/bin/${k8s_version}/crio-patched ${host_local_bin}/crio-patched
+-	cp ${crio_artifacts}/bin/${k8s_version}/pinns-patched ${host_local_bin}/pinns-patched
++	cp ${crio_artifacts}/bin/${k8s_minor_version}/cri-o.${sys_arch}.tar.gz ${host_local_bin}/cri-o.${sys_arch}.tar.gz
++	cp ${crio_artifacts}/patched/${k8s_version}/crio ${host_local_bin}/crio-patched
++	cp ${crio_artifacts}/patched/${k8s_version}/pinns ${host_local_bin}/pinns-patched
+ 
+ 	cp ${crio_artifacts}/scripts/crio-installer.sh ${host_local_bin}/crio-installer.sh
+ 	cp ${crio_artifacts}/scripts/crio-extractor.sh ${host_local_bin}/crio-extractor.sh
+@@ -163,7 +163,7 @@ function deploy_kubelet_config_service() {
+ 	cp ${crio_artifacts}/systemd/kubelet-config-helper.service ${host_systemd}/kubelet-config-helper.service
+ 	cp ${crio_artifacts}/config/crio-kubelet-options ${host_var_lib_sysbox_deploy_k8s}/crio-kubelet-options
+ 
+-	cp /usr/local/bin/crictl ${host_local_bin}/sysbox-deploy-k8s-crictl
++	cp ${crio_artifacts}/patched/${k8s_version}/crictl ${host_local_bin}/sysbox-deploy-k8s-crictl
+ 
+ 	echo "Running Kubelet config agent on the host (will restart Kubelet and temporary bring down all pods on this node for ~1 min) ..."
+ 	systemctl daemon-reload
+@@ -187,7 +187,7 @@ function deploy_kubelet_unconfig_service() {
+ 
+ 	cp ${crio_artifacts}/scripts/kubelet-unconfig-helper.sh ${host_local_bin}/kubelet-unconfig-helper.sh
+ 	cp ${crio_artifacts}/systemd/kubelet-unconfig-helper.service ${host_systemd}/kubelet-unconfig-helper.service
+-	cp /usr/local/bin/crictl ${host_local_bin}/sysbox-deploy-k8s-crictl
++	cp ${crio_artifacts}/patched/${k8s_version}/crictl ${host_local_bin}/sysbox-deploy-k8s-crictl
+ 
+ 	echo "Running Kubelet unconfig agent on the host (will restart Kubelet and temporary bring down all pods on this node for ~1 min) ..."
+ 	systemctl daemon-reload
 @@ -284,6 +284,21 @@ function get_artifacts_dir() {
  	elif [[ "$distro" =~ "flatcar" ]]; then
  		local release=$(echo $distro | cut -d"-" -f2)
@@ -148,7 +286,27 @@ index 8409df3..0c05c90 100755
  		sed -i "/^ExecStart=/ s|/usr/bin/sysbox-fs|/usr/bin/sysbox-fs ${SYSBOX_FS_CONFIG}|" ${sysbox_artifacts}/systemd/sysbox-fs.service
  	fi
  }
-@@ -813,7 +828,11 @@ function is_supported_distro() {
+@@ -746,7 +761,7 @@ function print_usage() {
+ }
+ 
+ function get_k8s_version() {
+-	local version=$(kubectl get node $NODE_NAME -o jsonpath='{.status.nodeInfo.kubeletVersion}' | awk -F "." '{print $1 "." $2}')
++	local version=$(kubectl get node $NODE_NAME -o jsonpath='{.status.nodeInfo.kubeletVersion}' | sed 's/+.*//')
+ 
+ 	if [ "$?" -ne 0 ]; then
+ 		die "invalid Kubernetes version"
+@@ -755,6 +770,10 @@ function get_k8s_version() {
+ 	echo "$version"
+ }
+ 
++function get_k8s_minor_version() {
++	echo "$k8s_version" | awk -F "." '{print $1 "." $2}'
++}
++
+ function get_container_runtime() {
+ 	local runtime=$(kubectl get node $NODE_NAME -o jsonpath='{.status.nodeInfo.containerRuntimeVersion}')
+ 
+@@ -813,7 +832,11 @@ function is_supported_distro() {
  		[[ "$distro" == "ubuntu-20.04" ]] ||
  		[[ "$distro" == "ubuntu-18.04" ]] ||
  		[[ "$distro" =~ "debian" ]] ||
@@ -161,7 +319,16 @@ index 8409df3..0c05c90 100755
  		return
  	fi
  
-@@ -941,8 +960,8 @@ function is_sysbox_config_changed() {
+@@ -853,7 +876,7 @@ function is_supported_arch() {
+ 
+ function is_supported_k8s_version() {
+ 
+-	local ver=$k8s_version
++	local ver=$k8s_minor_version
+ 
+ 	if [[ "$ver" == "v1.32" ]] ||
+ 		[[ "$ver" == "v1.33" ]] ||
+@@ -941,8 +964,8 @@ function is_sysbox_config_changed() {
  		sysbox_fs_config=$(cat ${host_var_lib_sysbox_deploy_k8s}/sysbox_fs_config)
  	fi
  
@@ -172,6 +339,14 @@ index 8409df3..0c05c90 100755
  		return 0
  	fi
  
+@@ -1278,6 +1301,7 @@ function main() {
+ 	fi
+ 
+ 	k8s_version=$(get_k8s_version)
++	k8s_minor_version=$(get_k8s_minor_version)
+ 	if ! is_supported_k8s_version; then
+ 		die "Sysbox is not supported on this Kubernetes version ($k8s_version)".
+ 	fi
 diff --git a/k8s/scripts/sysbox-installer-helper.sh b/k8s/scripts/sysbox-installer-helper.sh
 index 8a6691c..1242df1 100755
 --- a/k8s/scripts/sysbox-installer-helper.sh

@@ -7,7 +7,7 @@
 
 Name: karellen-sysbox
 Version: 0.7.0.13
-Release: 3
+Release: 4
 License: ASL 2.0
 Summary: Karellen Sysbox is an UNOFFICIAL Fedora/RHEL/CentOS spin of the Nestybox Sysbox.
 Url: https://github.com/karellen/%{name}
@@ -130,6 +130,14 @@ make DESTDIR=%{buildroot}%{_bindir} install
 %systemd_postun_with_restart sysbox-fs.service sysbox-mgr.service sysbox.service
 
 %changelog
+* Thu Jun 04 2026 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.7.0.13-4
+- Disable debugsource on RHEL/EPEL 8 where debugedit cannot handle Go DWARF
+  (arcadiy@ivanov.biz)
+
+* Thu Jun 04 2026 Arcadiy Ivanov <arcadiy@ivanov.biz>
+- Disable debugsource on RHEL/EPEL 8 where debugedit cannot handle Go DWARF
+  (arcadiy@ivanov.biz)
+
 * Thu Jun 04 2026 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.7.0.13-3
 - Enable debuginfo/debugsource packages, bump Go to 1.24.13, fix PATH
   (arcadiy@ivanov.biz)

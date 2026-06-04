@@ -1,6 +1,10 @@
 %global golang_version 1.24.13
 %global protoc_version 3.15.8
 
+%if 0%{?rhel} && 0%{?rhel} < 9
+%global _debugsource_packages 0
+%endif
+
 Name: karellen-sysbox
 Version: 0.7.0.13
 Release: 3

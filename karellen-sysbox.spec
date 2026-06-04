@@ -1,6 +1,4 @@
-%global debug_package %{nil}
-%global _missing_build_ids_terminate_build 0
-%global golang_version 1.24.12
+%global golang_version 1.24.13
 %global protoc_version 3.15.8
 
 Name: karellen-sysbox
@@ -64,26 +62,27 @@ Restart docker daemon (systemctl restart docker) after configuration changes.
 
 %prep
 %autosetup
+sed -i 's/ -trimpath//g' sysbox/sysbox-runc/Makefile \
+                         sysbox/sysbox-fs/Makefile \
+                         sysbox/sysbox-mgr/Makefile
 cd /tmp
 mkdir -p $HOME/.local
-export PATH="$PATH:$HOME/.local/bin:$HOME/.local/go/bin"
 wget https://go.dev/dl/go%{golang_version}.linux-%{sys_arch}.tar.gz
+rm -rf $HOME/.local/go
 tar -C $HOME/.local -xzf go%{golang_version}.linux-%{sys_arch}.tar.gz
 curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v%{protoc_version}/protoc-%{protoc_version}-linux-%{protoc_arch}.zip
 unzip -u protoc-%{protoc_version}-linux-%{protoc_arch}.zip -d $HOME/.local
+export PATH="$HOME/.local/bin:$HOME/.local/go/bin:$HOME/go/bin:$PATH"
 go install github.com/golang/protobuf/protoc-gen-go@latest
-export PATH="$PATH:$(go env GOPATH)/bin"
 
 %build
-export PATH="$PATH:$HOME/.local/bin:$HOME/.local/go/bin"
-export PATH="$PATH:$(go env GOPATH)/bin"
+export PATH="$HOME/.local/bin:$HOME/.local/go/bin:$HOME/go/bin:$PATH"
 
 cd sysbox
 make sysbox-local
 
 %install
-export PATH="$PATH:$HOME/.local/bin:$HOME/.local/go/bin"
-export PATH="$PATH:$(go env GOPATH)/bin"
+export PATH="$HOME/.local/bin:$HOME/.local/go/bin:$HOME/go/bin:$PATH"
 
 cp sysbox/OSS_DISCLOSURES.md .
 cp sysbox/LICENSE LICENSE-nestybox

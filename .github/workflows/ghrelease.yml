@@ -127,6 +127,9 @@ jobs:
       packages: write
       contents: read
     needs: [build-k8s-images]
+    # The default success() also requires the transitively-needed upload-assets
+    # job, which is skipped on image-only rebuilds.
+    if: ${{ !cancelled() && needs.build-k8s-images.result == 'success' }}
     timeout-minutes: 600
     continue-on-error: false
     env:

@@ -11,7 +11,7 @@ Unofficial Fedora/RHEL/CentOS RPM packaging of [Nestybox Sysbox](https://github.
 - `.tito/` - Tito RPM build/release tooling with custom `SysboxVersionTagger`
 - `.github/workflows/` - CI/CD workflows:
   - `update.yml` - Checks upstream submodule changes every 6h, auto-commits and tags via tito
-  - `ghrelease.yml` - On tag push: syncs COPR build to GitHub Release, builds multi-arch K8s deploy images
+  - `ghrelease.yml` - On tag push: syncs COPR build to GitHub Release, builds multi-arch K8s deploy images. Also triggered via `repository_dispatch` (event type `crio-release`) from karellen-sysbox-crio when a new patched CRI-O release is published — in that case the COPR sync is skipped and the images are rebuilt at the latest existing `karellen-sysbox-*` tag, repackaging them with the new CRI-O binaries. The same images-only rebuild can be run manually via `workflow_dispatch` with an empty `tag` input
 
 ## Build System
 

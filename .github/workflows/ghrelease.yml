@@ -3,12 +3,30 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        required: true
+        description: >-
+          Release tag to sync from COPR and build images for. Leave empty to
+          only rebuild the K8s deploy images at the latest release tag
+          (catch up on new CRI-O releases).
+        required: false
+        default: ''
   push:
     tags:
       - karellen-sysbox-*
+  repository_dispatch:
+    types:
+      - crio-release
+# Coalesce image-rebuild storms from karellen-sysbox-crio and manual catch-up
+# runs (one running + one queued at most); tag pushes keep their own per-ref
+# groups and are unaffected.
+concurrency:
+  group: ${{ github.workflow }}-${{ (github.event_name == 'repository_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '')) && 'crio-release' || github.ref }}
+  cancel-in-progress: false
 jobs:
   upload-assets:
+    # New karellen-sysbox-crio releases (and manual runs without a tag) only
+    # repackage the K8s deploy images; the sysbox release itself is unchanged
+    # and the COPR build may no longer exist, so skip the COPR sync.
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '')
     runs-on: ubuntu-24.04
     timeout-minutes: 600
     continue-on-error: false
@@ -46,6 +64,7 @@ jobs:
           - ubuntu-24.04-arm
 
     needs: [upload-assets]
+    if: ${{ !cancelled() && (needs.upload-assets.result == 'success' || needs.upload-assets.result == 'skipped') }}
     timeout-minutes: 600
     continue-on-error: false
     outputs:
@@ -61,6 +80,30 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
           submodules: recursive
+
+      # The image build derives SYSBOX_CE_VER_KARELLEN from the tag at HEAD and
+      # downloads the RPM release assets for it, so always build at a release tag.
+      # On crio-release dispatches and manual runs HEAD is master, not the tag,
+      # so explicitly check out the requested release tag, or the latest one on
+      # crio-release dispatches and manual runs without a tag.
+      - name: Checkout release tag
+        shell: bash
+        run: |
+          set -eEux
+          set -o pipefail
+
+          TAG=""
+          case "${{ github.event_name }}" in
+            push) TAG="${{ github.ref_name }}" ;;
+            workflow_dispatch) TAG="${{ github.event.inputs.tag }}" ;;
+          esac
+
+          if [ -z "$TAG" ]; then
+              TAG="$(git tag --list 'karellen-sysbox-*' --sort=-creatordate | head -1)"
+          fi
+
+          git checkout "$TAG"
+          git submodule update --init --recursive
 
       - name: Start Docker
         run: |

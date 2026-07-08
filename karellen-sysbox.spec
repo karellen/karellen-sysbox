@@ -32,9 +32,12 @@ BuildRequires: libseccomp-devel
 
 Requires: (docker or docker-ce)
 Requires: systemd
-Requires: fuse
+Requires: fuse3
 Requires: libseccomp
 Requires: rsync
+Requires: iptables
+Requires: kmod
+Requires: procps-ng
 
 Provides: sysbox
 

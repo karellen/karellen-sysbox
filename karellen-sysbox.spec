@@ -6,8 +6,8 @@
 %endif
 
 Name: karellen-sysbox
-Version: 0.7.0.13
-Release: 6
+Version: 0.7.0.22
+Release: 1
 License: ASL 2.0
 Summary: Karellen Sysbox is an UNOFFICIAL Fedora/RHEL/CentOS spin of the Nestybox Sysbox.
 Url: https://github.com/karellen/%{name}
@@ -133,6 +133,9 @@ make DESTDIR=%{buildroot}%{_bindir} install
 %systemd_postun_with_restart sysbox-fs.service sysbox-mgr.service sysbox.service
 
 %changelog
+* Tue Jul 28 2026 Karellen Supervisor <supervisor@karellen.co> 0.7.0.22-1
+- Update 2026-07-28T19:24:28Z (supervisor@karellen.co)
+
 * Tue Jul 07 2026 Arcadiy Ivanov <arcadiy@ivanov.biz> 0.7.0.13-6
 - Require fuse3 and other runtime dependencies actually exec'ed by sysbox
   (arcadiy@ivanov.biz)

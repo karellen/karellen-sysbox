@@ -18,7 +18,7 @@ Unofficial Fedora/RHEL/CentOS RPM packaging of [Nestybox Sysbox](https://github.
 - **RPM/Tito**: `tito tag` and `tito build` drive versioning and packaging
 - **Version scheme**: `{sysbox/VERSION}.{commits_since_version_change}-{release}` (e.g. `0.7.0.3-2`)
 - **Custom tagger**: `.tito/libs/karellen/tito/version_tagger.py` - reads `sysbox/VERSION`, counts submodule commits
-- **RPM build**: Downloads Go + protoc, runs `make sysbox-local` in the submodule
+- **RPM build**: Downloads Go + protoc, installs the `protoc-gen-go` and `protoc-gen-go-grpc` plugins (versions pinned in the spec), runs `make sysbox-local` in the submodule
 
 ## Patch Workflow
 

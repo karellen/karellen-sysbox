@@ -1,5 +1,7 @@
-%global golang_version 1.24.13
+%global golang_version 1.25.14
 %global protoc_version 3.15.8
+%global protoc_gen_go_version 1.36.8
+%global protoc_gen_go_grpc_version 1.5.1
 
 %if 0%{?rhel} && 0%{?rhel} < 9
 %global debug_package %{nil}
@@ -80,7 +82,8 @@ tar -C $HOME/.local -xzf go%{golang_version}.linux-%{sys_arch}.tar.gz
 curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v%{protoc_version}/protoc-%{protoc_version}-linux-%{protoc_arch}.zip
 unzip -u protoc-%{protoc_version}-linux-%{protoc_arch}.zip -d $HOME/.local
 export PATH="$HOME/.local/bin:$HOME/.local/go/bin:$HOME/go/bin:$PATH"
-go install github.com/golang/protobuf/protoc-gen-go@latest
+go install google.golang.org/protobuf/cmd/protoc-gen-go@v%{protoc_gen_go_version}
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v%{protoc_gen_go_grpc_version}
 
 %build
 export PATH="$HOME/.local/bin:$HOME/.local/go/bin:$HOME/go/bin:$PATH"

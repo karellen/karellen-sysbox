@@ -11,7 +11,7 @@ Unofficial Fedora/RHEL/CentOS RPM packaging of [Nestybox Sysbox](https://github.
 - `.tito/` - Tito RPM build/release tooling with custom `SysboxVersionTagger`
 - `.github/workflows/` - CI/CD workflows:
   - `update.yml` - Checks upstream submodule changes every 6h, auto-commits and tags via tito
-  - `ghrelease.yml` - On tag push: syncs COPR build to GitHub Release, builds multi-arch K8s deploy images. Also triggered via `repository_dispatch` (event type `crio-release`) from karellen-sysbox-crio when a new patched CRI-O release is published — in that case the COPR sync is skipped and the images are rebuilt at the latest existing `karellen-sysbox-*` tag, repackaging them with the new CRI-O binaries. The same images-only rebuild can be run manually via `workflow_dispatch` with an empty `tag` input
+  - `ghrelease.yml` - On tag push: syncs COPR build to GitHub Release, builds multi-arch K8s deploy images. The sync (`karellen/copr-to-gh-release`) fails the run, and so blocks the image build, if any RPM of a succeeded COPR chroot cannot be fetched. Also triggered via `repository_dispatch` (event type `crio-release`) from karellen-sysbox-crio when a new patched CRI-O release is published — in that case the COPR sync is skipped and the images are rebuilt at the latest existing `karellen-sysbox-*` tag, repackaging them with the new CRI-O binaries. The same images-only rebuild can be run manually via `workflow_dispatch` with an empty `tag` input
 
 ## Build System
 
@@ -24,9 +24,18 @@ Unofficial Fedora/RHEL/CentOS RPM packaging of [Nestybox Sysbox](https://github.
 
 The single patch `sysbox-pkgr-0.patch` is applied:
 - During RPM build: automatically via `%autosetup` in the spec file
-- During K8s image build: explicitly via `patch -p1 -d sysbox/sysbox-pkgr < sysbox-pkgr-0.patch` in `ghrelease.yml`
+- During K8s image build: `ghrelease.yml` runs `build.sh`, which applies it via `patch.sh`, runs `tests/test-k8s-deploy.sh`, then `make all` in `sysbox/sysbox-pkgr/k8s`
 
 When upstream changes files touched by the patch, the patch must be regenerated against the new submodule state.
+
+## K8s Deploy Image Invariants
+
+An image must never ship without Sysbox binaries for the distros it claims, and the deploy daemonset must never stop a running Sysbox it cannot reinstall:
+- `fetch-sysbox-ce-rpm-bins` fails if the release version is empty, the GitHub API call fails, or the `karellen-sysbox-<version>` release has no distro RPM assets for the build arch
+- `check-sysbox-artifacts` requires all of `sysbox-runc`, `sysbox-mgr`, `sysbox-fs` in `bin/sysbox-ce/generic` and in every distro directory, and at least one distro directory
+- `sysbox-deploy-k8s.sh` runs `check_sysbox_artifacts` in the main shell right after `install_precheck` (when installing or updating), before the node is tainted or Sysbox is stopped
+
+`tests/test-k8s-deploy.sh [patched sysbox-pkgr dir]` covers these offline; it defaults to `sysbox/sysbox-pkgr`, so run it after `patch.sh`.
 
 ## Key Commands
 
@@ -39,4 +48,7 @@ tito build --rpm --test
 
 # Apply patch manually for testing
 patch -p1 -d sysbox/sysbox-pkgr < sysbox-pkgr-0.patch
+
+# Test the patched K8s deploy image tooling (offline)
+tests/test-k8s-deploy.sh
 ```

@@ -46,7 +46,10 @@ jobs:
           copr-package-name: karellen-sysbox
           tag-to-version-regex: '^karellen-sysbox-(\d.+)$'
           tag: ${{ github.event_name == 'push' && github.ref_name || github.event.inputs.tag }}
-          clobber-assets: ${{ github.event_name == 'push' }}
+          # This job only runs for a tag push or a manual run naming a tag, both of which ask to
+          # (re-)sync that tag's release. The action refuses to touch a release if any COPR
+          # asset cannot be fetched, so clobbering never replaces a release with a partial one.
+          clobber-assets: true
           wait-build: true
 
   build-k8s-images:

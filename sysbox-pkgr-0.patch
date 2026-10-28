@@ -1,5 +1,5 @@
 diff --git a/k8s/Makefile b/k8s/Makefile
-index bb5de53..9a9f141 100644
+index bb5de53..fcc0f22 100644
 --- a/k8s/Makefile
 +++ b/k8s/Makefile
 @@ -3,8 +3,9 @@
@@ -42,19 +42,30 @@ index bb5de53..9a9f141 100644
  #
  # Sysbox artifacts for Ubuntu distro
  #
-@@ -79,23 +86,30 @@ fetch-sysbox-ce-bins:
+@@ -79,23 +86,41 @@ fetch-sysbox-ce-bins:
  	cp $(TMPDIR)/sysbox-ce-generic/usr/bin/sysbox-* bin/sysbox-ce/generic/.
  	rm -rf $(TMPDIR)
  
 +fetch-sysbox-ce-rpm-bins:
 +	$(eval TMPDIR := $(shell mktemp -d))
 +	@echo "TMPDIR = $(TMPDIR)"
-+	set -e; for distro in $(shell curl -sL https://api.github.com/repos/karellen/karellen-sysbox/releases/tags/karellen-sysbox-$(SYSBOX_CE_VER_KARELLEN) | \
-+	                jq -r '.assets[] | .browser_download_url' | grep -E '/centos-stream-|/epel|/fedora|/amazonlinux' | grep $(UNAME_M)); do \
++	set -e; set -o pipefail; \
++	if [ -z "$(SYSBOX_CE_VER_KARELLEN)" ]; then \
++		echo "SYSBOX_CE_VER_KARELLEN is empty (HEAD is not at a karellen-sysbox-* release tag)" >&2; \
++		exit 1; \
++	fi; \
++	distros=$$(curl -fsSL https://api.github.com/repos/karellen/karellen-sysbox/releases/tags/karellen-sysbox-$(SYSBOX_CE_VER_KARELLEN) | \
++	                jq -er '.assets[] | .browser_download_url' | \
++	                { grep -E '/centos-stream-|/epel|/fedora|/amazonlinux' || true; } | { grep $(UNAME_M) || true; }); \
++	if [ -z "$$distros" ]; then \
++		echo "release karellen-sysbox-$(SYSBOX_CE_VER_KARELLEN) has no $(UNAME_M) distro RPM assets" >&2; \
++		exit 1; \
++	fi; \
++	for distro in $$distros; do \
 +		distro_dir=$$(basename $$distro | sed 's/-karellen-sysbox.*//'); \
 +		echo $$distro_dir; \
 +		mkdir -p $(TMPDIR)/sysbox-ce-$$distro_dir; \
-+		curl -sL "$$distro" | rpm2cpio - | cpio -idmv -D $(TMPDIR)/sysbox-ce-$$distro_dir; \
++		curl -fsSL "$$distro" | rpm2cpio - | cpio -idmv -D $(TMPDIR)/sysbox-ce-$$distro_dir; \
 +		mkdir -p bin/sysbox-ce/$$distro_dir; \
 +		rm -rf bin/sysbox-ce/$$distro_dir/*; \
 +		cp $(TMPDIR)/sysbox-ce-$$distro_dir/usr/bin/sysbox-* bin/sysbox-ce/$$distro_dir/. ; \
@@ -86,8 +97,16 @@ index bb5de53..9a9f141 100644
  
  #
  # The check-* targets verify that CRI-O, Sysbox binaries and its dependencies are
-@@ -126,8 +140,9 @@ check-sysbox-artifacts:
- 	$(foreach file,$(SYSBOX_BINS),[ -f "bin/sysbox-ce/generic/$(file)" ] || "missing sysbox-ce binary: bin/sysbox-ce/generic/$(file)")
+@@ -123,11 +148,16 @@ crio-build-container:
+ #
+ 
+ check-sysbox-artifacts:
+-	$(foreach file,$(SYSBOX_BINS),[ -f "bin/sysbox-ce/generic/$(file)" ] || "missing sysbox-ce binary: bin/sysbox-ce/generic/$(file)")
++	@$(foreach file,$(SYSBOX_BINS),[ -f "bin/sysbox-ce/generic/$(file)" ] || (echo "missing sysbox-ce binary: bin/sysbox-ce/generic/$(file)" && false);)
++	@ls -d bin/sysbox-ce/*/ | grep -v -x 'bin/sysbox-ce/generic/' >/dev/null || (echo "missing distro-specific sysbox-ce binaries in bin/sysbox-ce/" && false)
++	@set -e; for dir in bin/sysbox-ce/*/; do \
++		$(foreach file,$(SYSBOX_BINS),[ -f "$${dir}$(file)" ] || (echo "missing sysbox-ce binary: $${dir}$(file)" && false);) \
++	done
  
  check-crio-artifacts:
 -	@$(foreach version,$(CRIO_VERSIONS),[ -f "bin/crio/$(version)/crio" ] || "missing CRI-O binary: bin/crio/$(version)/crio";)
@@ -98,7 +117,7 @@ index bb5de53..9a9f141 100644
  
  #
  # These targets build the sysbox-deploy-k8s images for sysbox-ce
-@@ -135,11 +150,28 @@ check-crio-artifacts:
+@@ -135,11 +165,28 @@ check-crio-artifacts:
  
  all: sysbox-deploy-k8s-image
  
@@ -216,7 +235,7 @@ index 0000000..fee518e
 +    done
 +done
 diff --git a/k8s/scripts/sysbox-deploy-k8s.sh b/k8s/scripts/sysbox-deploy-k8s.sh
-index 8409df3..7af4e33 100755
+index 8409df3..06246e4 100755
 --- a/k8s/scripts/sysbox-deploy-k8s.sh
 +++ b/k8s/scripts/sysbox-deploy-k8s.sh
 @@ -103,9 +103,9 @@ sysbox_install_in_progress="false"
@@ -250,7 +269,15 @@ index 8409df3..7af4e33 100755
  
  	echo "Running Kubelet unconfig agent on the host (will restart Kubelet and temporary bring down all pods on this node for ~1 min) ..."
  	systemctl daemon-reload
-@@ -284,6 +284,21 @@ function get_artifacts_dir() {
+@@ -273,6 +273,7 @@ function restart_crio() {
+ function get_artifacts_dir() {
+ 
+ 	local distro=$os_distro_release
++	local artifacts_dir=""
+ 
+ 	if [[ "$distro" == "ubuntu-24.04" ]] ||
+ 		[[ "$distro" == "ubuntu-22.04" ]] ||
+@@ -284,11 +285,42 @@ function get_artifacts_dir() {
  	elif [[ "$distro" =~ "flatcar" ]]; then
  		local release=$(echo $distro | cut -d"-" -f2)
  		artifacts_dir="${sysbox_artifacts}/bin/flatcar-${release}"
@@ -265,14 +292,35 @@ index 8409df3..7af4e33 100755
 +	elif [[ "$distro" =~ "amzn" ]]; then
 +		local release=$(echo $distro | cut -d"-" -f2)
 +		artifacts_dir="${sysbox_artifacts}/bin/amazonlinux-$release"
-+	fi
-+
-+	if [[ -z "$artifacts_dir" ]] || [[ ! -d "$artifacts_dir" ]]; then
-+		die "Sysbox is not supported on this host's distro ($distro): $artifacts_dir".
  	fi
  
  	echo $artifacts_dir
-@@ -332,11 +347,11 @@ function config_sysbox_env() {
+ }
+ 
++# Verify that this image carries Sysbox binaries for the host's distro. This must
++# run in the main shell (not in a command substitution, where die() would only exit
++# the subshell) and before anything on the host is changed, so that a broken image
++# fails without stopping a running Sysbox.
++function check_sysbox_artifacts() {
++	local artifacts_dir
++	artifacts_dir=$(get_artifacts_dir)
++
++	if [[ -z "$artifacts_dir" ]]; then
++		die "Sysbox is not supported on this host's distro ($os_distro_release)".
++	fi
++
++	local bin
++	for bin in sysbox-mgr sysbox-fs sysbox-runc; do
++		if [[ ! -f "${artifacts_dir}/${bin}" ]]; then
++			die "Sysbox binary for this host's distro ($os_distro_release) is missing from the image: ${artifacts_dir}/${bin}".
++		fi
++	done
++}
++
+ function copy_sysbox_to_host() {
+ 
+ 	local artifacts_dir=$(get_artifacts_dir)
+@@ -332,11 +364,11 @@ function config_sysbox_env() {
  # Update Sysbox's systemd unit files with the received configMap configuration
  # corresponding to the sysbox-mgr and sysbox-fs services.
  function config_sysbox() {
@@ -286,7 +334,7 @@ index 8409df3..7af4e33 100755
  		sed -i "/^ExecStart=/ s|/usr/bin/sysbox-fs|/usr/bin/sysbox-fs ${SYSBOX_FS_CONFIG}|" ${sysbox_artifacts}/systemd/sysbox-fs.service
  	fi
  }
-@@ -746,7 +761,7 @@ function print_usage() {
+@@ -746,7 +778,7 @@ function print_usage() {
  }
  
  function get_k8s_version() {
@@ -295,7 +343,7 @@ index 8409df3..7af4e33 100755
  
  	if [ "$?" -ne 0 ]; then
  		die "invalid Kubernetes version"
-@@ -755,6 +770,10 @@ function get_k8s_version() {
+@@ -755,6 +787,10 @@ function get_k8s_version() {
  	echo "$version"
  }
  
@@ -306,7 +354,7 @@ index 8409df3..7af4e33 100755
  function get_container_runtime() {
  	local runtime=$(kubectl get node $NODE_NAME -o jsonpath='{.status.nodeInfo.containerRuntimeVersion}')
  
-@@ -813,7 +832,11 @@ function is_supported_distro() {
+@@ -813,7 +849,11 @@ function is_supported_distro() {
  		[[ "$distro" == "ubuntu-20.04" ]] ||
  		[[ "$distro" == "ubuntu-18.04" ]] ||
  		[[ "$distro" =~ "debian" ]] ||
@@ -319,7 +367,7 @@ index 8409df3..7af4e33 100755
  		return
  	fi
  
-@@ -853,7 +876,7 @@ function is_supported_arch() {
+@@ -853,7 +893,7 @@ function is_supported_arch() {
  
  function is_supported_k8s_version() {
  
@@ -328,7 +376,7 @@ index 8409df3..7af4e33 100755
  
  	if [[ "$ver" == "v1.32" ]] ||
  		[[ "$ver" == "v1.33" ]] ||
-@@ -941,8 +964,8 @@ function is_sysbox_config_changed() {
+@@ -941,8 +981,8 @@ function is_sysbox_config_changed() {
  		sysbox_fs_config=$(cat ${host_var_lib_sysbox_deploy_k8s}/sysbox_fs_config)
  	fi
  
@@ -339,7 +387,7 @@ index 8409df3..7af4e33 100755
  		return 0
  	fi
  
-@@ -1278,6 +1301,7 @@ function main() {
+@@ -1278,6 +1318,7 @@ function main() {
  	fi
  
  	k8s_version=$(get_k8s_version)
@@ -347,6 +395,18 @@ index 8409df3..7af4e33 100755
  	if ! is_supported_k8s_version; then
  		die "Sysbox is not supported on this Kubernetes version ($k8s_version)".
  	fi
+@@ -1318,6 +1359,11 @@ function main() {
+ 		mkdir -p ${host_var_lib_sysbox_deploy_k8s}
+ 		install_precheck
+ 
++		if [[ "$do_sysbox_install" == "true" ]] ||
++			[[ "$do_sysbox_update" == "true" ]]; then
++			check_sysbox_artifacts
++		fi
++
+ 		# Prevent new pods being scheduled till sysbox installation/update is completed.
+ 		add_taint_to_node "${k8s_taints}"
+ 
 diff --git a/k8s/scripts/sysbox-installer-helper.sh b/k8s/scripts/sysbox-installer-helper.sh
 index 8a6691c..1242df1 100755
 --- a/k8s/scripts/sysbox-installer-helper.sh

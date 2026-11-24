@@ -1,5 +1,5 @@
 diff --git a/k8s/Makefile b/k8s/Makefile
-index 792c373..8ab04df 100644
+index 792c373..ed2961b 100644
 --- a/k8s/Makefile
 +++ b/k8s/Makefile
 @@ -3,8 +3,9 @@
@@ -67,7 +67,7 @@ index 792c373..8ab04df 100644
 +		echo "SYSBOX_CE_VER_KARELLEN is empty (HEAD is not at a karellen-sysbox-* release tag)" >&2; \
 +		exit 1; \
 +	fi; \
-+	distros=$$(curl -fsSL https://api.github.com/repos/karellen/karellen-sysbox/releases/tags/karellen-sysbox-$(SYSBOX_CE_VER_KARELLEN) | \
++	distros=$$(gh api repos/karellen/karellen-sysbox/releases/tags/karellen-sysbox-$(SYSBOX_CE_VER_KARELLEN) | \
 +	                jq -er '.assets[] | .browser_download_url' | \
 +	                { grep -E '/centos-stream-|/epel|/fedora|/amazonlinux' || true; } | { grep $(UNAME_M) || true; }); \
 +	if [ -z "$$distros" ]; then \

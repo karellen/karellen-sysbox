@@ -110,6 +110,148 @@ else
 fi
 
 #
+# Makefile: fetch-sysbox-ce-rpm-bins looks the release up through the authenticated GitHub API (gh api)
+# and installs the Sysbox binaries of every distro RPM for the build arch. gh, curl, rpm2cpio and cpio
+# are stubbed; every call is recorded in <work>/calls. The curl stub refuses api.github.com requests,
+# like GitHub does once the unauthenticated rate limit of a shared runner IP is exhausted.
+#
+
+HOST_ARCH="$(uname -m)"
+if [[ "$HOST_ARCH" == "x86_64" ]]; then OTHER_ARCH=aarch64; else OTHER_ARCH=x86_64; fi
+RELEASE_VER=0.7.2.1-2
+RELEASE_DL="https://github.com/karellen/karellen-sysbox/releases/download/karellen-sysbox-${RELEASE_VER}"
+
+# make_fetch_stubs <work dir> <gh mode: ok|fail> <release asset name>...
+function make_fetch_stubs() {
+	local work=$1 gh_mode=$2
+	shift 2
+	mkdir -p "${work}/stubs"
+
+	local asset assets=""
+	for asset in "$@"; do
+		assets="${assets:+${assets},}{\"name\":\"${asset}\",\"browser_download_url\":\"${RELEASE_DL}/${asset}\"}"
+	done
+	echo "{\"tag_name\":\"karellen-sysbox-${RELEASE_VER}\",\"assets\":[${assets}]}" > "${work}/release.json"
+
+	cat > "${work}/stubs/gh" <<EOF
+#!/bin/bash
+echo "gh \$*" >> "${work}/calls"
+if [[ "${gh_mode}" == "fail" ]]; then
+	echo "gh: Forbidden (HTTP 403)" >&2
+	exit 1
+fi
+if [[ "\$*" == "api repos/karellen/karellen-sysbox/releases/tags/karellen-sysbox-${RELEASE_VER}" ]]; then
+	cat "${work}/release.json"
+	exit 0
+fi
+echo "gh: Not Found (HTTP 404)" >&2
+exit 1
+EOF
+	cat > "${work}/stubs/curl" <<EOF
+#!/bin/bash
+echo "curl \$*" >> "${work}/calls"
+url="\${@: -1}"
+if [[ "\$url" == *api.github.com* ]]; then
+	echo "curl: (22) The requested URL returned error: 403" >&2
+	exit 22
+fi
+echo "\$(basename "\$url")"
+EOF
+	cat > "${work}/stubs/rpm2cpio" <<EOF
+#!/bin/bash
+cat
+EOF
+	cat > "${work}/stubs/cpio" <<EOF
+#!/bin/bash
+echo "cpio \$*" >> "${work}/calls"
+dest=""
+while [[ \$# -gt 0 ]]; do
+	if [[ "\$1" == "-D" ]]; then dest=\$2; shift; fi
+	shift
+done
+rpm="\$(cat)"
+if [[ "\$rpm" == *-debuginfo-* ]] || [[ "\$rpm" == *-debugsource-* ]]; then
+	mkdir -p "\${dest}/usr/lib/debug"
+	echo "\${rpm}" > "\${dest}/usr/lib/debug/\${rpm}"
+	exit 0
+fi
+mkdir -p "\${dest}/usr/bin"
+for bin in sysbox-runc sysbox-mgr sysbox-fs; do
+	echo "\${rpm}" > "\${dest}/usr/bin/\${bin}"
+done
+EOF
+	chmod +x "${work}/stubs/"*
+}
+
+# run_fetch <work dir>
+function run_fetch() {
+	local work=$1
+	PATH="${work}/stubs:${PATH}" run_make "$work" fetch-sysbox-ce-rpm-bins SYSBOX_CE_VER_KARELLEN="${RELEASE_VER}"
+}
+
+# Two distros for the build arch (each with debuginfo), the same distros for the other arch, and
+# release assets that are not distro RPMs.
+work="${TEST_TMP}/make-fetch-ok"
+make_fetch_stubs "$work" ok \
+	"fedora-44-karellen-sysbox-${RELEASE_VER}.${HOST_ARCH}.rpm" \
+	"fedora-44-karellen-sysbox-debuginfo-${RELEASE_VER}.${HOST_ARCH}.rpm" \
+	"fedora-44-karellen-sysbox-${RELEASE_VER}.${OTHER_ARCH}.rpm" \
+	"centos-stream-9-karellen-sysbox-${RELEASE_VER}.${HOST_ARCH}.rpm" \
+	"centos-stream-9-karellen-sysbox-debuginfo-${RELEASE_VER}.${HOST_ARCH}.rpm" \
+	"centos-stream-9-karellen-sysbox-${RELEASE_VER}.${OTHER_ARCH}.rpm" \
+	"karellen-sysbox-${RELEASE_VER}.src.rpm" \
+	"sha256sums.txt"
+rc=0
+run_fetch "$work" >"${work}.log" 2>&1 || rc=$?
+problems=()
+[[ $rc -eq 0 ]] || problems+=("rc=${rc}")
+grep -qx "gh api repos/karellen/karellen-sysbox/releases/tags/karellen-sysbox-${RELEASE_VER}" "${work}/calls" 2>/dev/null ||
+	problems+=("release not looked up with gh api")
+! grep -q "api.github.com" "${work}/calls" 2>/dev/null || problems+=("unauthenticated api.github.com request")
+! grep -q "${OTHER_ARCH}" "${work}/calls" 2>/dev/null || problems+=("downloaded ${OTHER_ARCH} assets")
+! grep -q "src.rpm\|sha256sums" "${work}/calls" 2>/dev/null || problems+=("downloaded non-distro assets")
+for distro in fedora-44 centos-stream-9; do
+	for bin in sysbox-runc sysbox-mgr sysbox-fs; do
+		grep -qx "${distro}-karellen-sysbox-${RELEASE_VER}.${HOST_ARCH}.rpm" "${work}/bin/sysbox-ce/${distro}/${bin}" 2>/dev/null ||
+			problems+=("bin/sysbox-ce/${distro}/${bin} not from the ${distro} ${HOST_ARCH} RPM")
+	done
+done
+dirs="$(cd "${work}/bin/sysbox-ce" 2>/dev/null && ls | sort | tr '\n' ' ' || true)"
+[[ "$dirs" == "centos-stream-9 fedora-44 " ]] || problems+=("distro dirs: '${dirs}'")
+if [[ ${#problems[@]} -eq 0 ]]; then
+	pass "fetch-sysbox-ce-rpm-bins installs the ${HOST_ARCH} distro binaries of the release found with gh api"
+else
+	fail "fetch-sysbox-ce-rpm-bins with a release: $(IFS=';'; echo "${problems[*]}")"
+	sed 's/^/    /' "${work}.log" "${work}/calls" 2>/dev/null || true
+fi
+
+# The release lookup fails (e.g. HTTP 403): the target fails without installing anything.
+work="${TEST_TMP}/make-fetch-lookup-fails"
+make_fetch_stubs "$work" fail "fedora-44-karellen-sysbox-${RELEASE_VER}.${HOST_ARCH}.rpm" \
+	"centos-stream-9-karellen-sysbox-${RELEASE_VER}.${HOST_ARCH}.rpm"
+rc=0
+run_fetch "$work" >"${work}.log" 2>&1 || rc=$?
+if [[ $rc -ne 0 ]] && [[ ! -e "${work}/bin/sysbox-ce" ]] && ! grep -q "distro RPM assets" "${work}.log"; then
+	pass "fetch-sysbox-ce-rpm-bins fails when the release lookup fails (rc=${rc})"
+else
+	fail "fetch-sysbox-ce-rpm-bins with a failing release lookup: expected a lookup failure, got rc=${rc}"
+	sed 's/^/    /' "${work}.log"
+fi
+
+# The release has distro RPMs only for the other arch.
+work="${TEST_TMP}/make-fetch-other-arch-only"
+make_fetch_stubs "$work" ok "fedora-44-karellen-sysbox-${RELEASE_VER}.${OTHER_ARCH}.rpm" \
+	"centos-stream-9-karellen-sysbox-${RELEASE_VER}.${OTHER_ARCH}.rpm"
+rc=0
+run_fetch "$work" >"${work}.log" 2>&1 || rc=$?
+if [[ $rc -ne 0 ]] && grep -q "has no ${HOST_ARCH} distro RPM assets" "${work}.log" && [[ ! -e "${work}/bin/sysbox-ce" ]]; then
+	pass "fetch-sysbox-ce-rpm-bins fails when the release has no ${HOST_ARCH} distro RPMs (rc=${rc})"
+else
+	fail "fetch-sysbox-ce-rpm-bins with only ${OTHER_ARCH} RPMs: expected 'has no ${HOST_ARCH} distro RPM assets', got rc=${rc}"
+	sed 's/^/    /' "${work}.log"
+fi
+
+#
 # sysbox-deploy-k8s.sh: Sysbox binaries for the host distro are verified before the host is touched
 #
 

@@ -31,7 +31,7 @@ The patch also downloads the generic (Ubuntu) `sysbox-ce` deb from the `nestybox
 ## K8s Deploy Image Invariants
 
 An image must never ship without Sysbox binaries for the distros it claims, and the deploy daemonset must never stop a running Sysbox it cannot reinstall:
-- `fetch-sysbox-ce-rpm-bins` fails if the release version is empty, the GitHub API call fails, or the `karellen-sysbox-<version>` release has no distro RPM assets for the build arch
+- `fetch-sysbox-ce-rpm-bins` fails if the release version is empty, the GitHub API call fails, or the `karellen-sysbox-<version>` release has no distro RPM assets for the build arch. The release lookup goes through `gh api` (authenticated with the job's `GH_TOKEN`), not anonymous `curl`: anonymous requests from shared runner IPs hit GitHub's rate limit and fail with HTTP 403
 - `check-sysbox-artifacts` requires all of `sysbox-runc`, `sysbox-mgr`, `sysbox-fs` in `bin/sysbox-ce/generic` and in every distro directory, and at least one distro directory
 - `sysbox-deploy-k8s.sh` runs `check_sysbox_artifacts` in the main shell right after `install_precheck` (when installing or updating), before the node is tainted or Sysbox is stopped
 

@@ -22,11 +22,11 @@ Unofficial Fedora/RHEL/CentOS RPM packaging of [Nestybox Sysbox](https://github.
 
 ## Patch Workflow
 
-The single patch `sysbox-pkgr-0.patch` is applied:
-- During RPM build: automatically via `%autosetup` in the spec file
-- During K8s image build: `ghrelease.yml` runs `build.sh`, which applies it via `patch.sh`, runs `tests/test-k8s-deploy.sh`, then `make all` in `sysbox/sysbox-pkgr/k8s`
+The single patch `sysbox-pkgr-0.patch` only affects the K8s deploy image; the RPM build does not apply it (the spec declares no `Patch:` tag). `ghrelease.yml` runs `build.sh`, which applies it via `patch.sh`, runs `tests/test-k8s-deploy.sh`, then `make all` in `sysbox/sysbox-pkgr/k8s`.
 
-When upstream changes files touched by the patch, the patch must be regenerated against the new submodule state.
+When upstream changes files touched by the patch, the patch must be regenerated against the new submodule state: apply it, resolve the rejects in `sysbox/sysbox-pkgr`, `git add -N k8s/scripts/crio-fetch.sh` (a file the patch creates), and `git diff` the submodule into `sysbox-pkgr-0.patch`. The image build checks out the release tag, so a patch fix only reaches the images with a new tag. Without a submodule change the tagger recomputes the same version, so bump the release explicitly (`tito tag --use-release=<N> --accept-auto-changelog`, e.g. `0.7.2.1-1` → `--use-release=2`), then `git push --follow-tags`.
+
+The patch also downloads the generic (Ubuntu) `sysbox-ce` deb from the `nestybox/sysbox` GitHub release `v<VERSION>`: as of 0.7.2 upstream no longer publishes it to the `storage.googleapis.com/sysbox-releases` bucket that the upstream Makefile still points to.
 
 ## K8s Deploy Image Invariants
 

@@ -1,5 +1,5 @@
 diff --git a/k8s/Makefile b/k8s/Makefile
-index bb5de53..fcc0f22 100644
+index 792c373..8ab04df 100644
 --- a/k8s/Makefile
 +++ b/k8s/Makefile
 @@ -3,8 +3,9 @@
@@ -13,8 +13,8 @@ index bb5de53..fcc0f22 100644
 +	fetch-crio \
  	check-sysbox-artifacts \
  	check-crio-artifacts \
- 	clean-sysbox-ce clean-crio clean
-@@ -28,12 +29,13 @@ SYSBOX_BINS = sysbox-runc sysbox-mgr sysbox-fs
+ 	print-image-tag \
+@@ -29,15 +30,16 @@ SYSBOX_BINS = sysbox-runc sysbox-mgr sysbox-fs
  #     SYSBOX_CE_VER_SEMVER = 0.6.3
  #     SYSBOX_CE_VER_FULL   = 0.6.3-1
  #
@@ -24,13 +24,17 @@ index bb5de53..fcc0f22 100644
  SYSBOX_CE_VER_SEMVER = $(shell echo $(SYSBOX_CE_VER) | cut -d"-" -f1)
  SYSBOX_CE_VER_FULL = $(shell echo $(SYSBOX_CE_VER) | sed '/-[0-9]/!s/.*/&-0/')
  
+ # Name (without tag) of the sysbox-deploy-k8s image to build.
+-K8S_IMAGE ?= ghcr.io/nestybox/sysbox-deploy-k8s
++K8S_IMAGE ?= ghcr.io/karellen/sysbox-deploy-k8s
+ 
  # CRIO versions to build.
 -CRIO_VERSIONS = v1.32 v1.33 v1.34 v1.35
 +CRIO_VERSIONS = v1.30 v1.31 v1.32 v1.33 v1.34 v1.35 v1.36 
  
  # Patch version is used to track changes to the sysbox-deploy-k8s image not related to
  # the Sysbox's version. For example, if we need to rebuild the sysbox-deploy-k8s image
-@@ -58,6 +60,11 @@ else ifeq ($(UNAME_M),armel)
+@@ -62,6 +64,11 @@ else ifeq ($(UNAME_M),armel)
  	SYS_ARCH := armel
  endif
  
@@ -42,7 +46,16 @@ index bb5de53..fcc0f22 100644
  #
  # Sysbox artifacts for Ubuntu distro
  #
-@@ -79,23 +86,41 @@ fetch-sysbox-ce-bins:
+@@ -80,7 +87,7 @@ fetch-sysbox-ce-bins:
+ 	$(eval TMPDIR := $(shell mktemp -d))
+ 	@echo "TMPDIR = $(TMPDIR)"
+ ifeq ($(SYSBOX_CE_DEB),)
+-	wget https://storage.googleapis.com/sysbox-releases/v$(SYSBOX_CE_VER_SEMVER)/sysbox-ce/sysbox-ce_$(SYSBOX_CE_VER_FULL).linux_$(SYS_ARCH).deb -P $(TMPDIR)
++	wget https://github.com/nestybox/sysbox/releases/download/v$(SYSBOX_CE_VER)/sysbox-ce_$(SYSBOX_CE_VER).linux_$(SYS_ARCH).deb -O $(TMPDIR)/sysbox-ce_$(SYSBOX_CE_VER_FULL).linux_$(SYS_ARCH).deb
+ else
+ 	cp $(SYSBOX_CE_DEB) $(TMPDIR)/sysbox-ce_$(SYSBOX_CE_VER_FULL).linux_$(SYS_ARCH).deb
+ endif
+@@ -91,23 +98,41 @@ endif
  	cp $(TMPDIR)/sysbox-ce-generic/usr/bin/sysbox-* bin/sysbox-ce/generic/.
  	rm -rf $(TMPDIR)
  
@@ -97,7 +110,7 @@ index bb5de53..fcc0f22 100644
  
  #
  # The check-* targets verify that CRI-O, Sysbox binaries and its dependencies are
-@@ -123,11 +148,16 @@ crio-build-container:
+@@ -135,11 +160,16 @@ crio-build-container:
  #
  
  check-sysbox-artifacts:
@@ -117,12 +130,12 @@ index bb5de53..fcc0f22 100644
  
  #
  # These targets build the sysbox-deploy-k8s images for sysbox-ce
-@@ -135,11 +165,28 @@ check-crio-artifacts:
+@@ -147,11 +177,28 @@ check-crio-artifacts:
  
  all: sysbox-deploy-k8s-image
  
 -sysbox-deploy-k8s-image: build-crio check-crio-artifacts fetch-sysbox-ce-bins check-sysbox-artifacts
--	docker build -t ghcr.io/nestybox/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) \
+-	docker build -t $(K8S_IMAGE):v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH) \
 +sysbox-deploy-k8s-image: fetch-crio check-crio-artifacts fetch-sysbox-ce-bins fetch-sysbox-ce-rpm-bins check-sysbox-artifacts
 +	set -e; \
 +	if [ -n "$${GITHUB_ACTIONS}" ] && [ -n "$$GITHUB_OUTPUT" ]; then \
@@ -136,7 +149,7 @@ index bb5de53..fcc0f22 100644
 +	sed -i '/ARG CRICTL_VERSION/d' Dockerfile.sysbox-ce.tmp
 +	sed -i '/crictl will be copied/,/rm -f crictl/d' Dockerfile.sysbox-ce.tmp
 +	echo 'COPY bin/crio/ /opt/crio-deploy/patched/' >> Dockerfile.sysbox-ce.tmp
-+	docker build -t ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH)$(ARCH_TAG) \
++	docker build -t $(K8S_IMAGE):v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH)$(ARCH_TAG) \
  		--build-arg sys_arch=$(SYS_ARCH) \
  		--build-arg sysbox_version=v$(SYSBOX_CE_VER_FULL) \
 -		-f Dockerfile.sysbox-ce .
@@ -144,11 +157,11 @@ index bb5de53..fcc0f22 100644
 +	rm -f Dockerfile.sysbox-ce.tmp
 +	set -e; \
 +	if [ -n "$${GITHUB_ACTIONS}" ]; then \
-+		docker push ghcr.io/karellen/sysbox-deploy-k8s:v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH)$(ARCH_TAG); \
++		docker push $(K8S_IMAGE):v$(SYSBOX_CE_VER_FULL)$(SYSBOX_DEPLOY_K8S_IMAGE_PATCH)$(ARCH_TAG); \
 +	fi
  
- #
- # Cleanup targets
+ # Prints the tag of the image built by sysbox-deploy-k8s-image.
+ print-image-tag:
 diff --git a/k8s/manifests/daemonset/sysbox-cleanup-k8s.yaml b/k8s/manifests/daemonset/sysbox-cleanup-k8s.yaml
 index f4b23bb..4387df2 100644
 --- a/k8s/manifests/daemonset/sysbox-cleanup-k8s.yaml
